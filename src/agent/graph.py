@@ -40,7 +40,7 @@ def build_graph():
             "ASSET":    "RAG_Consult",
             "STOCK":    "Stock_Extract",
             "TRANSFER": "Transfer_Extract",
-            "UNKNOWN":  "Save_Memory",
+            "UNKNOWN":  "RAG_Consult",
         }
     )
 
