@@ -114,3 +114,8 @@ src/
 | @docs/db/db-index.md | DB 작업 시 |
 | @docs/convention/git-convention.md | 브랜치/커밋/PR 규칙 확인할 때 |
 | @docs/tech-stack/tech-stack.md | 기술 스택 확인할 때 |
+| @docs/ai/ai-architecture.md | AI 전체 구조 파악할 때 |
+| @docs/ai/ai-pipeline.md | 분석 파이프라인 개발 시 |
+| @docs/ai/ai-langgraph.md | LangGraph Agent 개발 시 |
+| @docs/ai/ai-tools.md | Tool 개발 시 |
+| @docs/ai/ai-database.md | AI DB 작업 시 |
