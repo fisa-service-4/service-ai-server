@@ -2,40 +2,455 @@
 
 > Port: `8082`
 
+## Base URL
+
+```text
+/internal/v1/stock
+```
 ---
-
-## STOCK API
-
-| Method | URL                       | 설명        | 인증     |
-|--------|---------------------------|-----------|--------|
-| GET    | /stocks/search            | 종목 검색     | Bearer |
-| GET    | /stocks/{stockCode}/price | 종목 현재가 조회 | Bearer |
-| GET    | /stocks/{stockCode}/chart | 종목 차트 조회  | Bearer |
 
 ---
 
-## ORDER API
+## 공통 헤더
 
-| Method | URL                      | 설명       | 인증         |
-|--------|--------------------------|----------|------------|
-| POST   | /orders                  | 주식 주문 생성 | Bearer+PIN |
-| POST   | /orders/{orderId}/cancel | 주문 취소    | Bearer+PIN |
-| GET    | /orders                  | 주문 내역 조회 | Bearer     |
-| GET    | /orders/{orderId}        | 주문 상세 조회 | Bearer     |
+| 헤더              | 설명                        | 필수 |
+| --------------- | ------------------------- | -- |
+| X-User-Id       | 사용자 식별 ID                 | O  |
+| X-Trace-Id      | 요청 추적 ID                  | O  |
+| Idempotency-Key | 중복 요청 방지 키 (Write API 전용) | O  |
 
----
-
-## EXECUTION API
-
-| Method | URL         | 설명       | 인증     |
-|--------|-------------|----------|--------|
-| GET    | /executions | 체결 내역 조회 | Bearer |
+> JWT 인증 없음.
+> 내부 서버 간 통신 전용이며 Core 서버는 검증 완료된 내부 요청만 처리
 
 ---
 
-## HOLDING API
+## 공통 응답 헤더
 
-| Method | URL               | 설명       | 인증     |
-|--------|-------------------|----------|--------|
-| GET    | /holdings         | 보유 종목 조회 | Bearer |
-| GET    | /holdings/returns | 수익률 조회   | Bearer |
+| 헤더         | 설명       | 필수 |
+| ---------- | -------- | -- |
+| X-Trace-Id | 요청 추적 ID | O  |
+
+> Response의 X-Trace-Id는 Request의 X-Trace-Id와 동일 값 사용
+
+---
+
+## COMMON-002. 헬스 체크 (Stock)
+
+**GET** `/internal/v1/stock/health`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "database": "UP",
+    "server": "UP"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+## STOCK-SEARCH-001. 종목 검색
+
+**GET** `/internal/v1/stock/search`
+
+### Query Parameters
+
+| 이름      | 타입     | 필수 | 설명          |
+| ------- | ------ | -- | ----------- |
+| keyword | String | O  | 종목명 또는 종목코드 |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "stockCode": "005930",
+        "stockName": "삼성전자",
+        "market": "KOSPI",
+        "currentPrice": 82000,
+        "changeRate": -1.2
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-PRICE-001. 현재가 조회
+
+**GET** `/internal/v1/stock/{stockCode}/price`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "stockCode": "005930",
+    "stockName": "삼성전자",
+    "currentPrice": 82000,
+    "changeRate": -1.2,
+    "updatedAt": "2026-05-17T12:00:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-CHART-001. 차트 조회
+
+**GET** `/internal/v1/stock/{stockCode}/charts`
+
+### Query Parameters
+
+| 이름       | 타입     | 필수 | 설명                       |
+| -------- | ------ | -- | ------------------------ |
+| interval | String | O  | DAILY / WEEKLY / MONTHLY |
+| fromDate | Date   | X  | 조회 시작일 (YYYY-MM-DD)      |
+| toDate   | Date   | X  | 조회 종료일 (YYYY-MM-DD)      |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "date": "2026-05-17",
+        "open": 81000,
+        "high": 82500,
+        "low": 80500,
+        "close": 82000,
+        "volume": 12345678
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-ACCOUNT-001. 주문 가능 계좌 조회
+
+**GET** `/internal/v1/stock/accounts`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "accountId": 2001,
+        "accountNumber": "300-123-456789",
+        "accountName": "내 주식 계좌",
+        "bankCode": "039"
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-ACCOUNT-002. 예수금 조회
+
+**GET** `/internal/v1/stock/accounts/{accountId}/cash-balance`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "accountId": 2001,
+    "cashBalance": 3000000,
+    "availableBalance": 2800000
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-ORDER-001. 주문 생성
+
+**POST** `/internal/v1/stock/accounts/{accountId}/orders`
+
+> Write API
+> Idempotency-Key 필수
+
+### Request Body
+
+```json
+{
+  "stockCode": "005930",
+  "orderType": "BUY",
+  "orderMethod": "LIMIT",
+  "quantity": 10,
+  "price": 82000
+}
+```
+
+### Request Fields
+
+| 필드          | 타입      | 필수 | 설명             |
+| ----------- | ------- | -- | -------------- |
+| stockCode   | String  | O  | 종목 코드          |
+| orderType   | String  | O  | BUY / SELL     |
+| orderMethod | String  | O  | MARKET / LIMIT |
+| quantity    | Integer | O  | 주문 수량          |
+| price       | Integer | X  | LIMIT 주문 시 필수  |
+
+### Response `201 Created`
+
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": 1001,
+    "stockCode": "005930",
+    "orderType": "BUY",
+    "orderMethod": "LIMIT",
+    "quantity": 10,
+    "price": 82000,
+    "filledQuantity": 0,
+    "remainingQuantity": 10,
+    "status": "REQUESTED",
+    "orderedAt": "2026-05-17T12:00:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-ORDER-002. 주문 조회
+
+**GET** `/internal/v1/stock/accounts/{accountId}/orders`
+
+### Query Parameters
+
+| 이름        | 타입      | 필수 | 설명                                                                            |
+| --------- | ------- | -- | ----------------------------------------------------------------------------- |
+| status    | String  | X  | REQUESTED / PARTIAL_FILLED / FILLED / CANCELLED / FAILED / REJECTED / EXPIRED |
+| orderType | String  | X  | BUY / SELL                                                                    |
+| page      | Integer | X  | 페이지 번호 (기본값: 0)                                                               |
+| size      | Integer | X  | 페이지 크기 (기본값: 20)                                                              |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "orderId": 1001,
+        "stockCode": "005930",
+        "stockName": "삼성전자",
+        "orderType": "BUY",
+        "orderMethod": "LIMIT",
+        "quantity": 10,
+        "filledQuantity": 7,
+        "remainingQuantity": 3,
+        "price": 82000,
+        "status": "PARTIAL_FILLED",
+        "orderedAt": "2026-05-17T12:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-ORDER-003. 주문 상세 조회
+
+**GET** `/internal/v1/stock/orders/{orderId}`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": 1001,
+    "accountId": 2001,
+    "stockCode": "005930",
+    "stockName": "삼성전자",
+    "orderType": "BUY",
+    "orderMethod": "LIMIT",
+    "quantity": 10,
+    "filledQuantity": 7,
+    "remainingQuantity": 3,
+    "price": 82000,
+    "averageExecutionPrice": 81950,
+    "status": "PARTIAL_FILLED",
+    "orderedAt": "2026-05-17T12:00:00",
+    "updatedAt": "2026-05-17T12:03:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-ORDER-004. 주문 취소
+
+**POST** `/internal/v1/stock/orders/{orderId}/cancel`
+
+> Write API
+> Idempotency-Key 필수
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": 1001,
+    "status": "CANCELLED",
+    "cancelledQuantity": 8,
+    "filledQuantity": 2,
+    "remainingQuantity": 0,
+    "cancelledAt": "2026-05-17T12:10:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-EXECUTION-001. 체결 조회
+
+**GET** `/internal/v1/stock/accounts/{accountId}/executions`
+
+### Query Parameters
+
+| 이름        | 타입      | 필수 | 설명                  |
+| --------- | ------- | -- | ------------------- |
+| stockCode | String  | X  | 종목 코드               |
+| fromDate  | Date    | X  | 조회 시작일 (YYYY-MM-DD) |
+| toDate    | Date    | X  | 조회 종료일 (YYYY-MM-DD) |
+| page      | Integer | X  | 페이지 번호 (기본값: 0)     |
+| size      | Integer | X  | 페이지 크기 (기본값: 20)    |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "executionId": 501,
+        "orderId": 1001,
+        "stockCode": "005930",
+        "stockName": "삼성전자",
+        "executedPrice": 82000,
+        "executedQuantity": 5,
+        "executionAmount": 410000,
+        "executedAt": "2026-05-17T12:01:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+---
+
+## STOCK-HOLDING-001. 보유 종목 조회
+
+**GET** `/internal/v1/stock/accounts/{accountId}/holdings`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "stockCode": "005930",
+        "stockName": "삼성전자",
+        "quantity": 20,
+        "averagePrice": 78000,
+        "currentPrice": 82000,
+        "evaluationAmount": 1640000,
+        "unrealizedProfit": 80000,
+        "profitRate": 5.12
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-RETURN-001. 수익률 조회
+
+**GET** `/internal/v1/stock/accounts/{accountId}/returns`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "accountId": 2001,
+    "dailyReturnRate": 1.5,
+    "monthlyReturnRate": 7.3,
+    "yearlyReturnRate": 18.1
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```

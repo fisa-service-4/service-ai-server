@@ -157,7 +157,11 @@ type(scope): subject
 | auth         | 인증    |
 | home         | 홈     |
 | assets       | 자산    |
+| account      | 계좌    |
+| transfer     | 이체    |
 | stocks       | 증권    |
+| portfolio    | 포트폴리오 |
+| order        | 주문    |
 | contracts    | 계약    |
 | notification | 알림    |
 | mypage       | 마이페이지 |
@@ -167,6 +171,7 @@ type(scope): subject
 | infra        | 인프라   |
 | batch        | 배치    |
 | gateway      | 게이트웨이 |
+| action       | sage / 실행 상태 |
 
 ### PR 생성 규칙
 
