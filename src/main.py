@@ -5,13 +5,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.chat import router as chat_router
+from src.pipeline.db import close_pool, get_pool
 
 load_dotenv()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await get_pool()
     yield
+    await close_pool()
 
 
 app = FastAPI(
