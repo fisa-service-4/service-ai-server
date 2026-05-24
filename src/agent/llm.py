@@ -3,8 +3,9 @@ import os
 from openai import OpenAI
 
 client = OpenAI(
-    base_url=os.getenv("LLM_BASE_URL", "http://localhost:11434/v1"),
-    api_key="ollama",
+    api_key=os.getenv("LLM_API_KEY"),
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
-MODEL = os.getenv("LLM_MODEL", "qwen3:8b")
+MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+

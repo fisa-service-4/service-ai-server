@@ -2,16 +2,16 @@ import logging
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO)
-from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.chat import router as chat_router
 from src.pipeline.db import close_pool, get_pool
 from src.pipeline.runner import run_pipeline
-
-load_dotenv()
 
 
 @asynccontextmanager
