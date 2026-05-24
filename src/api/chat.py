@@ -61,7 +61,9 @@ async def send_message(
 
     try:
         result = await chat_graph.ainvoke(initial_state, config=config)
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception("chat_graph 실행 오류: %s", e)
         return fail("AI_001", "AI 응답 생성에 실패했습니다.")
 
     ai_messages = [m for m in result.get("messages", []) if m.get("role") == "assistant"]
@@ -120,4 +122,4 @@ async def get_messages(
 
 def _extract_user_id(authorization: str) -> str:
     # TODO: JWT 파싱으로 교체
-    return "test-user-1"
+    return "1"
