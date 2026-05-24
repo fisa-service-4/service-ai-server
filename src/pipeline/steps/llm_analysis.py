@@ -123,7 +123,6 @@ async def run(user_id: int):
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
-            extra_body={"think": False},  # Qwen3 thinking 모드 비활성화
         )
         raw = response.choices[0].message.content
         result = _parse_llm_response(raw)

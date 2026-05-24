@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS analysis_ai_vector_metadata
     reference_id       BIGINT,
     embedding_version  VARCHAR(50),
     chunk_text         TEXT,
-    vector_key         VARCHAR(255),
+    vector_key         VARCHAR(255) UNIQUE,
     embedding          vector(1024),  -- BGE-M3 출력 차원
     indexed_at         TIMESTAMP      NOT NULL
 );
