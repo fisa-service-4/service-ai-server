@@ -1,7 +1,7 @@
 import logging
 
 from src.pipeline.mock_data import insert_mock_data
-from src.pipeline.steps import llm_analysis, stat_analysis
+from src.pipeline.steps import llm_analysis, stat_analysis, embedding
 
 logger = logging.getLogger(__name__)
 
@@ -20,5 +20,9 @@ async def run_pipeline(user_id: int):
     logger.info("[3단계] LLM 분석 시작 (시간 소요)")
     await llm_analysis.run(user_id)
     logger.info("[3단계] 완료")
+
+    logger.info("[4단계] BGE-M3 임베딩 → pgvector 저장")
+    await embedding.run(user_id)
+    logger.info("[4단계] 완료")
 
     logger.info("[Pipeline] 전체 완료 - user_id=%s", user_id)
