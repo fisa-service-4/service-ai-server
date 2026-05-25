@@ -1,3 +1,4 @@
+import jwt
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
@@ -120,6 +121,12 @@ async def get_messages(
     return ok({"messages": session["messages"]})
 
 
-def _extract_user_id(authorization: str) -> str:
-    # TODO: JWT 파싱으로 교체
-    return "1"
+def _extract_user_id(authorization: str | None) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="인증 토큰이 없습니다.")
+    token = authorization.removeprefix("Bearer ")
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256"])
+        return str(payload["sub"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")

@@ -24,10 +24,6 @@ async def get_bank_balance(account_id: str, token: str | None = None) -> dict:
     return result.get("data", {})
 
 
-# TODO: 백엔드 팀 확인 후 엔드포인트 연동
-# async def get_contracts(token: str | None = None) -> list:
-# async def get_pending_income(token: str | None = None) -> list:
-
 
 async def get_virtual_salary_setting(token: str | None = None) -> dict:
     result = await get("/api/v1/virtual-salary", token=token)
