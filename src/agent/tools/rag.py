@@ -34,9 +34,9 @@ async def search_rag_context(user_id: str, query: str, top_k: int = 3) -> str:
     pool = await get_pool()
 
     async with pool.acquire() as conn:
-        rows = await conn.fetch(
+        personal_rows = await conn.fetch(
             """
-            SELECT vector_type, chunk_text,
+            SELECT vector_type AS source, chunk_text,
                    1 - (embedding <=> $1::vector) AS similarity
             FROM analysis_ai_vector_metadata
             WHERE user_id = $2
@@ -48,11 +48,23 @@ async def search_rag_context(user_id: str, query: str, top_k: int = 3) -> str:
             top_k,
         )
 
-    if not rows:
+        common_rows = await conn.fetch(
+            """
+            SELECT category AS source, chunk_text,
+                   1 - (embedding <=> $1::vector) AS similarity
+            FROM common_knowledge
+            ORDER BY embedding <=> $1::vector
+            LIMIT $2
+            """,
+            str(vector),
+            top_k,
+        )
+
+    all_rows = list(personal_rows) + list(common_rows)
+    all_rows.sort(key=lambda r: r["similarity"], reverse=True)
+    top_rows = all_rows[:top_k]
+
+    if not top_rows:
         return ""
 
-    context_parts = []
-    for row in rows:
-        context_parts.append(f"[{row['vector_type']}] {row['chunk_text']}")
-
-    return "\n\n".join(context_parts)
+    return "\n\n".join(f"[{r['source']}] {r['chunk_text']}" for r in top_rows)

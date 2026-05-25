@@ -6,7 +6,6 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
 
 logging.basicConfig(level=logging.INFO)
 
@@ -38,23 +37,6 @@ app.add_middleware(
 )
 
 app.include_router(chat_router)
-
-
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    schema = get_openapi(title=app.title, version=app.version, description=app.description, routes=app.routes)
-    schema.setdefault("components", {})["securitySchemes"] = {
-        "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
-    }
-    for path in schema.get("paths", {}).values():
-        for method in path.values():
-            if isinstance(method, dict):
-                method.setdefault("security", [{"BearerAuth": []}])
-    app.openapi_schema = schema
-    return schema
-
-app.openapi = custom_openapi
 
 
 @app.get("/health")

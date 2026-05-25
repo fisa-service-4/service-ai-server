@@ -1,7 +1,7 @@
 from src.agent.state import ChatAgentState
 from src.agent.tools.stock import execute_buy_order, execute_sell_order
 from src.agent.tools.transfer import execute_transfer
-from src.agent.tools.distribution import set_distribution, apply_distribution
+from src.agent.tools.distribution import set_distribution
 
 
 async def executor_node(state: ChatAgentState) -> dict:
@@ -26,7 +26,7 @@ async def executor_node(state: ChatAgentState) -> dict:
             })
 
         elif intent == "ASSET" and pending_action.get("type") == "DISTRIBUTION":
-            result = await apply_distribution(pending_action)
+            result = await set_distribution(pending_action)
 
         else:
             result = {}
