@@ -1,11 +1,14 @@
 import jwt
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
 from src.agent.graph import chat_graph
 from src.api.response import ok, fail
 
 router = APIRouter(prefix="/api/v1/ai/chat", tags=["AI Chat"])
+
+_bearer = HTTPBearer()
 
 # DB 연결 전 임시 인메모리
 _sessions: dict[int, dict] = {}
@@ -22,17 +25,25 @@ class SendMessageRequest(BaseModel):
     message: str
 
 
+def _extract_user_id(credentials: HTTPAuthorizationCredentials) -> str:
+    try:
+        payload = jwt.decode(credentials.credentials, options={"verify_signature": False}, algorithms=["HS256"])
+        return str(payload["sub"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
+
+
 @router.post("/sessions", status_code=201)
 async def create_session(
     body: CreateSessionRequest,
-    authorization: str | None = Header(None),
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ):
     global _session_counter
     _session_counter += 1
     session_id = _session_counter
 
     _sessions[session_id] = {
-        "user_id": _extract_user_id(authorization),
+        "user_id": _extract_user_id(credentials),
         "title": body.title,
         "messages": [],
         "status": "ACTIVE",
@@ -44,7 +55,7 @@ async def create_session(
 @router.post("/messages")
 async def send_message(
     body: SendMessageRequest,
-    authorization: str | None = Header(None),
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ):
     global _message_counter
 
@@ -88,7 +99,7 @@ async def send_message(
 @router.delete("/sessions/{session_id}")
 async def delete_session(
     session_id: int,
-    authorization: str | None = Header(None),
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ):
     if session_id not in _sessions:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다.")
@@ -99,8 +110,8 @@ async def delete_session(
 
 
 @router.get("/sessions")
-async def get_sessions(authorization: str = Header(...)):
-    user_id = _extract_user_id(authorization)
+async def get_sessions(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
+    user_id = _extract_user_id(credentials)
     user_sessions = [
         {"sessionId": sid, "title": s["title"], "status": s["status"]}
         for sid, s in _sessions.items()
@@ -112,21 +123,10 @@ async def get_sessions(authorization: str = Header(...)):
 @router.get("/sessions/{session_id}/messages")
 async def get_messages(
     session_id: int,
-    authorization: str | None = Header(None),
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ):
     session = _sessions.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다.")
 
     return ok({"messages": session["messages"]})
-
-
-def _extract_user_id(authorization: str | None) -> str:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="인증 토큰이 없습니다.")
-    token = authorization.removeprefix("Bearer ")
-    try:
-        payload = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256"])
-        return str(payload["sub"])
-    except Exception:
-        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
