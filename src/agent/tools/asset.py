@@ -1,9 +1,22 @@
 from src.agent.tools.client import get, post
+from src.pipeline.db import get_pool
 
 
-async def get_analysis_data(user_id: str, token: str | None = None) -> dict:
-    result = await get(f"/api/v1/analysis/{user_id}", token=token)
-    return result.get("data", {})
+async def get_analysis_data(user_id: str) -> dict:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        pattern = await conn.fetchrow(
+            "SELECT consumption_type, summary, risk_score FROM analysis_consumption_pattern WHERE user_id = $1 ORDER BY analyzed_at DESC LIMIT 1",
+            int(user_id),
+        )
+        briefing = await conn.fetchrow(
+            "SELECT briefing_summary FROM analysis_ai_briefing_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1",
+            int(user_id),
+        )
+    return {
+        "consumption_pattern": dict(pattern) if pattern else {},
+        "briefing": dict(briefing) if briefing else {},
+    }
 
 
 async def get_bank_balance(account_id: str, token: str | None = None) -> dict:
@@ -11,14 +24,9 @@ async def get_bank_balance(account_id: str, token: str | None = None) -> dict:
     return result.get("data", {})
 
 
-async def get_contracts(token: str | None = None) -> list:
-    result = await get("/api/v1/contracts", token=token)
-    return result.get("data", [])
-
-
-async def get_pending_income(token: str | None = None) -> list:
-    result = await get("/api/v1/contracts", token=token, params={"status": "PENDING"})
-    return result.get("data", [])
+# TODO: 백엔드 팀 확인 후 엔드포인트 연동
+# async def get_contracts(token: str | None = None) -> list:
+# async def get_pending_income(token: str | None = None) -> list:
 
 
 async def get_virtual_salary_setting(token: str | None = None) -> dict:
