@@ -2,8 +2,8 @@ from src.agent.tools.client import get, post
 
 
 async def search_stock(query: str, token: str | None = None) -> list:
-    result = await get("/api/v1/stocks/search", token=token, params={"q": query})
-    return result.get("data", [])
+    result = await get("/api/v1/stocks/search", token=token, params={"keyword": query})
+    return result.get("data", {}).get("stocks", [])
 
 
 async def get_stock_price(stock_code: str, token: str | None = None) -> dict:
@@ -13,7 +13,7 @@ async def get_stock_price(stock_code: str, token: str | None = None) -> dict:
 
 async def get_stocks_accounts(token: str | None = None) -> list:
     result = await get("/api/v1/stocks/accounts", token=token)
-    return result.get("data", [])
+    return result.get("data", {}).get("accounts", [])
 
 
 async def get_securities_balance(token: str | None = None) -> dict:
