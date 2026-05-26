@@ -68,6 +68,7 @@ async def send_message(
     config = {"configurable": {"thread_id": str(body.sessionId)}}
     initial_state = {
         "user_id": session["user_id"],
+        "token": credentials.credentials,
         "messages": session["messages"],
     }
 
