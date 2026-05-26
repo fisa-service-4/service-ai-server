@@ -7,15 +7,15 @@ from src.agent.tools.distribution import set_distribution
 async def executor_node(state: ChatAgentState) -> dict:
     intent = state.get("intent")
     pending_action = state.get("pending_action", {})
+    token = state.get("token")
 
-    # TODO: token 연동 (백엔드 인증 완성 후)
     try:
         if intent == "STOCK":
             stock_info = state.get("stock_info", {})
             if stock_info.get("order_type") == "BUY":
-                result = await execute_buy_order(stock_info)
+                result = await execute_buy_order(stock_info, token=token)
             else:
-                result = await execute_sell_order(stock_info)
+                result = await execute_sell_order(stock_info, token=token)
 
         elif intent == "TRANSFER":
             result = await execute_transfer({
@@ -23,10 +23,10 @@ async def executor_node(state: ChatAgentState) -> dict:
                 "toAccountId": state.get("to_account_id"),
                 "amount": state.get("amount"),
                 "description": state.get("description"),
-            })
+            }, token=token)
 
         elif intent == "ASSET" and pending_action.get("type") == "DISTRIBUTION":
-            result = await set_distribution(pending_action)
+            result = await set_distribution(pending_action, token=token)
 
         else:
             result = {}

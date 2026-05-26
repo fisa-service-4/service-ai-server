@@ -10,13 +10,13 @@ from fastapi.middleware.cors import CORSMiddleware
 logging.basicConfig(level=logging.INFO)
 
 from src.api.chat import router as chat_router
-from src.pipeline.db import close_pool, get_pool
+from src.pipeline.db import close_pool, create_tables, get_pool
 from src.pipeline.runner import run_pipeline
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await get_pool()
+    await create_tables()
     yield
     await close_pool()
 
