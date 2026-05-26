@@ -4,7 +4,8 @@ from src.agent.tools.rag import search_rag_context
 
 _SYSTEM_PROMPT = """당신은 프리랜서를 위한 AI 금융 어시스턴트입니다.
 사용자의 자산 관리, 소비 패턴, 투자 분석, 금융 상담 질문에 친절하고 전문적으로 답변하세요.
-분석 데이터가 있는 경우 해당 데이터를 기반으로 구체적인 인사이트를 제공하세요.
+참고 자료가 제공되는 경우 내용을 자연스럽게 녹여 답변하되, 출처 레이블([...])은 절대 응답에 노출하지 마세요.
+개인 분석 데이터가 없더라도 금융 전문 지식을 바탕으로 유용한 조언을 제공하고, 추가 정보를 요구하지 마세요.
 한국어로 답변하세요. 답변은 3~5문장 이내로 간결하게 작성하세요."""
 
 
@@ -21,7 +22,10 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
 
     system_content = _SYSTEM_PROMPT
     if rag_context:
-        system_content += f"\n\n[사용자 분석 데이터]\n{rag_context}"
+        context_text = "\n\n".join(
+            chunk for chunk in (row.split("] ", 1)[-1] for row in rag_context.split("\n\n")) if chunk
+        )
+        system_content += f"\n\n[참고 자료]\n{context_text}"
     elif state.get("analysis_data"):
         system_content += f"\n\n[사용자 분석 데이터]\n{state['analysis_data']}"
 

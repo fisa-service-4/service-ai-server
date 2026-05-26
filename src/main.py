@@ -45,6 +45,6 @@ async def health_check():
 
 
 @app.post("/api/v1/admin/pipeline/run")
-async def trigger_pipeline(user_id: int = 1):
-    await run_pipeline(user_id)
-    return {"status": "ok", "user_id": user_id}
+async def trigger_pipeline(user_id: int = 1, max_step: int = 4):
+    await run_pipeline(user_id, max_step=max_step)
+    return {"status": "ok", "user_id": user_id, "max_step": max_step}
