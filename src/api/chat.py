@@ -6,6 +6,11 @@ from pydantic import BaseModel
 from src.agent.graph import chat_graph
 from src.api.response import ok, fail
 
+try:
+    from langgraph.errors import GraphInterrupt as _GraphInterrupt
+except ImportError:
+    _GraphInterrupt = None
+
 router = APIRouter(prefix="/api/v1/ai/chat", tags=["AI Chat"])
 
 _bearer = HTTPBearer()
@@ -74,27 +79,51 @@ async def send_message(
 
     try:
         result = await chat_graph.ainvoke(initial_state, config=config)
-    except Exception as e:
+
+        ai_messages = [m for m in result.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
+        ai_content = ai_messages[-1]["content"] if ai_messages else "처리가 완료되었습니다."
+        intent = result.get("intent", "UNKNOWN")
+        action_required = bool(result.get("pending_action"))
+
+        session["messages"].append({"role": "assistant", "content": ai_content})
+
+        global _message_counter
+        _message_counter += 1
+
+        return ok({
+            "messageId": _message_counter,
+            "role": "AI",
+            "intent": intent,
+            "content": ai_content,
+            "actionRequired": action_required,
+        })
+    except BaseException as e:
         import logging
-        logging.getLogger(__name__).exception("chat_graph 실행 오류: %s", e)
+        _log = logging.getLogger(__name__)
+
+        if _GraphInterrupt and isinstance(e, _GraphInterrupt):
+            # Graph paused before Verifier (PIN confirmation needed).
+            # Extract the last saved state to return the AI recommendation.
+            try:
+                snapshot = chat_graph.get_state(config)
+                sv = snapshot.values if snapshot else {}
+                ai_msgs = [m for m in sv.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
+                ai_content = ai_msgs[-1]["content"] if ai_msgs else "추가 확인이 필요합니다."
+                intent = sv.get("intent", "ASSET")
+                session["messages"].append({"role": "assistant", "content": ai_content})
+                _message_counter += 1
+                return ok({
+                    "messageId": _message_counter,
+                    "role": "AI",
+                    "intent": intent,
+                    "content": ai_content,
+                    "actionRequired": True,
+                })
+            except Exception:
+                _log.exception("GraphInterrupt 상태 복구 실패")
+
+        _log.exception("chat_graph 실행 오류: %s", e)
         return fail("AI_001", "AI 응답 생성에 실패했습니다.")
-
-    ai_messages = [m for m in result.get("messages", []) if m.get("role") == "assistant"]
-    ai_content = ai_messages[-1]["content"] if ai_messages else "처리가 완료되었습니다."
-    intent = result.get("intent", "UNKNOWN")
-    action_required = bool(result.get("pending_action"))
-
-    session["messages"].append({"role": "assistant", "content": ai_content})
-
-    _message_counter += 1
-
-    return ok({
-        "messageId": _message_counter,
-        "role": "AI",
-        "intent": intent,
-        "content": ai_content,
-        "actionRequired": action_required,
-    })
 
 
 @router.delete("/sessions/{session_id}")

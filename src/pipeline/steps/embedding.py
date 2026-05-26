@@ -108,15 +108,15 @@ async def run(user_id: int):
         for chunk, vector in zip(chunks, vectors):
             vector_key = f"{user_id}:{chunk['vector_type']}:{chunk['reference_id']}"
             await conn.execute(
+                "DELETE FROM analysis_ai_vector_metadata WHERE vector_key = $1",
+                vector_key,
+            )
+            await conn.execute(
                 """
                 INSERT INTO analysis_ai_vector_metadata
                     (user_id, vector_type, reference_id, embedding_version,
                      chunk_text, vector_key, embedding, indexed_at)
                 VALUES ($1, $2, $3, $4, $5, $6, $7::vector, $8)
-                ON CONFLICT (vector_key) DO UPDATE
-                    SET chunk_text       = EXCLUDED.chunk_text,
-                        embedding        = EXCLUDED.embedding,
-                        indexed_at       = EXCLUDED.indexed_at
                 """,
                 user_id,
                 chunk["vector_type"],
