@@ -11,25 +11,25 @@
 
 # 1. API Domain
 
-| 구분           | Base URL       | 설명                                   |
+| 구분         | Base URL       | 설명                                 |
 | ------------ | -------------- | ------------------------------------ |
 | External API | `/api/v1`      | Client ↔ Service Backend             |
 | BaaS API     | `/baas/v1`     | Transaction Server ↔ Bank/Stock Core |
-| Internal API | `/internal/v1` | 내부 서버 간 통신                           |
-| MyData API   | `/mydata/v1`   | MyData 서비스 API                       |
+| Internal API | `/internal/v1` | 내부 서버 간 통신                    |
+| MyData API   | `/mydata/v1`   | MyData 서비스 API                    |
 
 ---
 
 # 2. 서버 역할 정의
 
-| 서버                 | 역할              |
-| ------------------ | --------------- |
-| service-backend    | 사용자 API Gateway |
+| 서버               | 역할                         |
+| ------------------ | ---------------------------- |
+| service-backend    | 사용자 API Gateway           |
 | transaction-server | 금융 트랜잭션 오케스트레이션 |
-| bank-server        | 은행 코어           |
-| stock-server       | 증권 코어           |
-| mydata-server      | 마이데이터 통합        |
-| ai-server          | AI 분석 및 추천      |
+| bank-server        | 은행 코어                    |
+| stock-server       | 증권 코어                    |
+| mydata-server      | 마이데이터 통합              |
+| ai-server          | AI 분석 및 추천              |
 
 ---
 
@@ -41,9 +41,9 @@
 /api/v1
 ```
 
-* 사용자 인증 필요
-* Client 전용 API
-* JWT 기반 인증 사용
+- 사용자 인증 필요
+- Client 전용 API
+- JWT 기반 인증 사용
 
 ---
 
@@ -53,9 +53,9 @@
 /baas/v1/{domain}
 ```
 
-* Transaction Server → Core Server 호출
-* 금융 처리 전용 API
-* Saga 기반 분산 처리 대상
+- Transaction Server → Core Server 호출
+- 금융 처리 전용 API
+- Saga 기반 분산 처리 대상
 
 ---
 
@@ -65,9 +65,9 @@
 /internal/v1/{domain}
 ```
 
-* 내부 서버 간 통신 전용
-* 외부 공개 금지
-* Internal Network 전용
+- 내부 서버 간 통신 전용
+- 외부 공개 금지
+- Internal Network 전용
 
 ---
 
@@ -77,9 +77,8 @@
 /mydata/v1
 ```
 
-
-* MyData 서버 연동 API
-* 통합 자산 조회 전용
+- MyData 서버 연동 API
+- 통합 자산 조회 전용
 
 ---
 
@@ -91,8 +90,8 @@
 Authorization: Bearer {accessToken}
 ```
 
-| Header        | 설명         |
-| ------------- | ---------- |
+| Header        | 설명            |
+| ------------- | --------------- |
 | Authorization | 사용자 인증 JWT |
 
 ---
@@ -100,22 +99,20 @@ Authorization: Bearer {accessToken}
 # 4-2. 금융 Write API 추가 Header
 
 ```http
-Pin-Token: {pinToken}
 Idempotency-Key: {uuid}
 ```
 
 | Header          | 설명           |
-| --------------- | ------------ |
-| Pin-Token       | PIN 인증 완료 토큰 |
-| Idempotency-Key | 중복 요청 방지     |
+| --------------- | -------------- |
+| Idempotency-Key | 중복 요청 방지 |
 
 적용 대상:
 
-* 이체
-* 주문
-* 자동분배 실행
-* 수동 매칭
-* 금융 거래 실행 API
+- 이체
+- 주문
+- 자동분배 실행
+- 수동 매칭
+- 금융 거래 실행 API
 
 ---
 
@@ -126,13 +123,13 @@ X-User-Id: {userId}
 X-Trace-Id: {uuid}
 ```
 
-| Header     | 설명        |
-| ---------- | --------- |
+| Header     | 설명           |
+| ---------- | -------------- |
 | X-User-Id  | 사용자 식별 ID |
-| X-Trace-Id | 요청 추적 ID  |
+| X-Trace-Id | 요청 추적 ID   |
 
-* 내부 인증 완료 요청만 허용
-* JWT 인증 미사용
+- 내부 인증 완료 요청만 허용
+- JWT 인증 미사용
 
 ---
 
@@ -259,9 +256,9 @@ completedAt
 X-Trace-Id: {uuid}
 ```
 
-* Request / Response 동일 값 사용
-* Saga 추적 및 로그 연계 목적
-* 전체 금융 흐름 추적 가능해야 함
+- Request / Response 동일 값 사용
+- Saga 추적 및 로그 연계 목적
+- 전체 금융 흐름 추적 가능해야 함
 
 ---
 
@@ -310,16 +307,16 @@ YYYY-MM-DD
 
 # 11. HTTP Status 규칙
 
-| 상황     | Status                    |
-| ------ | ------------------------- |
-| 조회 성공  | 200 OK                    |
-| 생성 성공  | 201 Created               |
+| 상황        | Status                    |
+| ----------- | ------------------------- |
+| 조회 성공   | 200 OK                    |
+| 생성 성공   | 201 Created               |
 | 비동기 요청 | 202 Accepted              |
 | 잘못된 요청 | 400 Bad Request           |
-| 인증 실패  | 401 Unauthorized          |
-| 권한 없음  | 403 Forbidden             |
+| 인증 실패   | 401 Unauthorized          |
+| 권한 없음   | 403 Forbidden             |
 | 리소스 없음 | 404 Not Found             |
-| 서버 오류  | 500 Internal Server Error |
+| 서버 오류   | 500 Internal Server Error |
 
 ---
 
@@ -337,19 +334,19 @@ Idempotency-Key: {uuid}
 
 ## 목적
 
-* 중복 실행 방지
-* 네트워크 재시도 안정성 확보
-* Exactly Once 처리 보조
+- 중복 실행 방지
+- 네트워크 재시도 안정성 확보
+- Exactly Once 처리 보조
 
 ---
 
 ## 적용 대상
 
-* 이체
-* 주문 생성
-* 주문 취소
-* 자동분배 실행
-* Saga 실행 API
+- 이체
+- 주문 생성
+- 주문 취소
+- 자동분배 실행
+- Saga 실행 API
 
 ---
 
@@ -420,18 +417,18 @@ CANCELLED
 
 다음 정보는 로그 저장 금지:
 
-* PIN 원문
-* 비밀번호
-* 주민번호
-* Access Token
-* Refresh Token
+- PIN 원문
+- 비밀번호
+- 주민번호
+- Access Token
+- Refresh Token
 
 ---
 
 ## PIN 저장 규칙
 
-* PIN 원문 저장 금지
-* Hash 저장 필수
+- PIN 원문 저장 금지
+- Hash 저장 필수
 
 ---
 
@@ -485,6 +482,8 @@ MYDATA_001
 Client
   ↓
 Service Backend
+  ↓
+(Mydata Server)
   ↓
 Transaction Server
   ↓

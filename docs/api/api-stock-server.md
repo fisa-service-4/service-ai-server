@@ -1,23 +1,17 @@
 # stock-server API 명세
 
-> Port: `8082`
-
-## Base URL
-
-```text
-/internal/v1/stock
-```
----
+> **Base URL:** `/internal/v1/stock`
+> **Port:** 8082
+> **사용 구간:** Transaction Server ↔ 내부 Stock-Server
 
 ---
 
 ## 공통 헤더
 
-| 헤더              | 설명                        | 필수 |
-| --------------- | ------------------------- | -- |
-| X-User-Id       | 사용자 식별 ID                 | O  |
-| X-Trace-Id      | 요청 추적 ID                  | O  |
-| Idempotency-Key | 중복 요청 방지 키 (Write API 전용) | O  |
+| 헤더       | 설명           | 필수 |
+| ---------- | -------------- | ---- |
+| X-User-Id  | 사용자 식별 ID | O    |
+| X-Trace-Id | 요청 추적 ID   | O    |
 
 > JWT 인증 없음.
 > 내부 서버 간 통신 전용이며 Core 서버는 검증 완료된 내부 요청만 처리
@@ -26,9 +20,9 @@
 
 ## 공통 응답 헤더
 
-| 헤더         | 설명       | 필수 |
-| ---------- | -------- | -- |
-| X-Trace-Id | 요청 추적 ID | O  |
+| 헤더       | 설명         | 필수 |
+| ---------- | ------------ | ---- |
+| X-Trace-Id | 요청 추적 ID | O    |
 
 > Response의 X-Trace-Id는 Request의 X-Trace-Id와 동일 값 사용
 
@@ -36,7 +30,7 @@
 
 ## COMMON-002. 헬스 체크 (Stock)
 
-**GET** `/internal/v1/stock/health`
+**GET** `/health`
 
 ### Response `200 OK`
 
@@ -53,15 +47,56 @@
 }
 ```
 
-## STOCK-SEARCH-001. 종목 검색
+## RECONCILIATION-002. 정합성 검증 결과 조회
 
-**GET** `/internal/v1/stock/search`
+**GET** `/reconciliation/result`
 
 ### Query Parameters
 
-| 이름      | 타입     | 필수 | 설명          |
-| ------- | ------ | -- | ----------- |
-| keyword | String | O  | 종목명 또는 종목코드 |
+| 이름             | 타입 | 필수 | 설명                     |
+| ---------------- | ---- | ---- | ------------------------ |
+| reconciliationId | Long | X    | 검증 ID (미입력 시 최신) |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "reconciliationId": 101,
+    "status": "SUCCESS",
+    "totalChecked": 1500,
+    "mismatchCount": 2,
+    "mismatches": [
+      {
+        "entityType": "TRANSFER",
+        "entityId": 5001,
+        "reason": "balance mismatch"
+      }
+    ],
+    "executedAt": "2026-05-17T03:00:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+# STOCK API
+
+---
+
+## STOCK-SEARCH-001. 종목 검색
+
+**GET** `/search`
+
+### Query Parameters
+
+| 이름    | 타입   | 필수 | 설명                 |
+| ------- | ------ | ---- | -------------------- |
+| keyword | String | O    | 종목명 또는 종목코드 |
 
 ### Response `200 OK`
 
@@ -89,7 +124,7 @@
 
 ## STOCK-PRICE-001. 현재가 조회
 
-**GET** `/internal/v1/stock/{stockCode}/price`
+**GET** `/{stockCode}/price`
 
 ### Response `200 OK`
 
@@ -113,15 +148,15 @@
 
 ## STOCK-CHART-001. 차트 조회
 
-**GET** `/internal/v1/stock/{stockCode}/charts`
+**GET** `/{stockCode}/charts`
 
 ### Query Parameters
 
-| 이름       | 타입     | 필수 | 설명                       |
-| -------- | ------ | -- | ------------------------ |
-| interval | String | O  | DAILY / WEEKLY / MONTHLY |
-| fromDate | Date   | X  | 조회 시작일 (YYYY-MM-DD)      |
-| toDate   | Date   | X  | 조회 종료일 (YYYY-MM-DD)      |
+| 이름     | 타입   | 필수 | 설명                     |
+| -------- | ------ | ---- | ------------------------ |
+| interval | String | O    | DAILY / WEEKLY / MONTHLY |
+| fromDate | Date   | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate   | Date   | X    | 조회 종료일 (YYYY-MM-DD) |
 
 ### Response `200 OK`
 
@@ -150,7 +185,7 @@
 
 ## STOCK-ACCOUNT-001. 주문 가능 계좌 조회
 
-**GET** `/internal/v1/stock/accounts`
+**GET** `/accounts`
 
 ### Response `200 OK`
 
@@ -177,7 +212,7 @@
 
 ## STOCK-ACCOUNT-002. 예수금 조회
 
-**GET** `/internal/v1/stock/accounts/{accountId}/cash-balance`
+**GET** `/accounts/{accountId}/cash-balance`
 
 ### Response `200 OK`
 
@@ -199,7 +234,7 @@
 
 ## STOCK-ORDER-001. 주문 생성
 
-**POST** `/internal/v1/stock/accounts/{accountId}/orders`
+**POST** `/accounts/{accountId}/orders`
 
 > Write API
 > Idempotency-Key 필수
@@ -218,13 +253,13 @@
 
 ### Request Fields
 
-| 필드          | 타입      | 필수 | 설명             |
-| ----------- | ------- | -- | -------------- |
-| stockCode   | String  | O  | 종목 코드          |
-| orderType   | String  | O  | BUY / SELL     |
-| orderMethod | String  | O  | MARKET / LIMIT |
-| quantity    | Integer | O  | 주문 수량          |
-| price       | Integer | X  | LIMIT 주문 시 필수  |
+| 필드        | 타입    | 필수 | 설명               |
+| ----------- | ------- | ---- | ------------------ |
+| stockCode   | String  | O    | 종목 코드          |
+| orderType   | String  | O    | BUY / SELL         |
+| orderMethod | String  | O    | MARKET / LIMIT     |
+| quantity    | Integer | O    | 주문 수량          |
+| price       | Integer | X    | LIMIT 주문 시 필수 |
 
 ### Response `201 Created`
 
@@ -253,16 +288,16 @@
 
 ## STOCK-ORDER-002. 주문 조회
 
-**GET** `/internal/v1/stock/accounts/{accountId}/orders`
+**GET** `/accounts/{accountId}/orders`
 
 ### Query Parameters
 
-| 이름        | 타입      | 필수 | 설명                                                                            |
-| --------- | ------- | -- | ----------------------------------------------------------------------------- |
-| status    | String  | X  | REQUESTED / PARTIAL_FILLED / FILLED / CANCELLED / FAILED / REJECTED / EXPIRED |
-| orderType | String  | X  | BUY / SELL                                                                    |
-| page      | Integer | X  | 페이지 번호 (기본값: 0)                                                               |
-| size      | Integer | X  | 페이지 크기 (기본값: 20)                                                              |
+| 이름      | 타입    | 필수 | 설명                                                                          |
+| --------- | ------- | ---- | ----------------------------------------------------------------------------- |
+| status    | String  | X    | REQUESTED / PARTIAL_FILLED / FILLED / CANCELLED / FAILED / REJECTED / EXPIRED |
+| orderType | String  | X    | BUY / SELL                                                                    |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)                                                       |
+| size      | Integer | X    | 페이지 크기 (기본값: 20)                                                      |
 
 ### Response `200 OK`
 
@@ -300,7 +335,7 @@
 
 ## STOCK-ORDER-003. 주문 상세 조회
 
-**GET** `/internal/v1/stock/orders/{orderId}`
+**GET** `/orders/{orderId}`
 
 ### Response `200 OK`
 
@@ -333,7 +368,7 @@
 
 ## STOCK-ORDER-004. 주문 취소
 
-**POST** `/internal/v1/stock/orders/{orderId}/cancel`
+**POST** `/orders/{orderId}/cancel`
 
 > Write API
 > Idempotency-Key 필수
@@ -361,17 +396,17 @@
 
 ## STOCK-EXECUTION-001. 체결 조회
 
-**GET** `/internal/v1/stock/accounts/{accountId}/executions`
+**GET** `/accounts/{accountId}/executions`
 
 ### Query Parameters
 
-| 이름        | 타입      | 필수 | 설명                  |
-| --------- | ------- | -- | ------------------- |
-| stockCode | String  | X  | 종목 코드               |
-| fromDate  | Date    | X  | 조회 시작일 (YYYY-MM-DD) |
-| toDate    | Date    | X  | 조회 종료일 (YYYY-MM-DD) |
-| page      | Integer | X  | 페이지 번호 (기본값: 0)     |
-| size      | Integer | X  | 페이지 크기 (기본값: 20)    |
+| 이름      | 타입    | 필수 | 설명                     |
+| --------- | ------- | ---- | ------------------------ |
+| stockCode | String  | X    | 종목 코드                |
+| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD) |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)  |
+| size      | Integer | X    | 페이지 크기 (기본값: 20) |
 
 ### Response `200 OK`
 
@@ -401,11 +436,12 @@
   }
 }
 ```
+
 ---
 
 ## STOCK-HOLDING-001. 보유 종목 조회
 
-**GET** `/internal/v1/stock/accounts/{accountId}/holdings`
+**GET** `/accounts/{accountId}/holdings`
 
 ### Response `200 OK`
 
@@ -436,7 +472,7 @@
 
 ## STOCK-RETURN-001. 수익률 조회
 
-**GET** `/internal/v1/stock/accounts/{accountId}/returns`
+**GET** `/accounts/{accountId}/returns`
 
 ### Response `200 OK`
 

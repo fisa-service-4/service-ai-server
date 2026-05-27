@@ -1,7 +1,8 @@
 # transaction-server API 명세
 
-> **Base URL:** `/baas/v1` | Port: `8083`
-> **사용 구간:** Transaction Server ↔ Bank/Stock Server
+> **Base URL:** `/baas/v1`
+> **Port:** 8083
+> **사용 구간:** 외부 서비스 <-> Transaction Server
 
 ---
 
@@ -22,7 +23,7 @@
 
 ```text
 /bank
-/stocks
+/stock
 /total
 ```
 
@@ -30,13 +31,13 @@
 
 ## Query Parameter Naming 규칙
 
-| 목적     | 이름        |
-| ------ | --------- |
-| 시작일    | fromDate  |
-| 종료일    | toDate    |
-| 최소 금액  | minAmount |
-| 최대 금액  | maxAmount |
-| 페이지    | page      |
+| 목적        | 이름      |
+| ----------- | --------- |
+| 시작일      | fromDate  |
+| 종료일      | toDate    |
+| 최소 금액   | minAmount |
+| 최대 금액   | maxAmount |
+| 페이지      | page      |
 | 페이지 크기 | size      |
 
 ---
@@ -93,11 +94,9 @@
 
 ## 공통 헤더
 
-| 헤더              | 설명                     | 필수           |
-| --------------- | ---------------------- | ------------ |
-| Authorization   | Bearer {accessToken}   | O            |
-| Pin-Token       | {pinToken}             | 금융 거래 API 전용 |
-| Idempotency-Key | {uuid}                 | 이체/주문 API 전용 |
+| 헤더            | 설명   | 필수               |
+| --------------- | ------ | ------------------ |
+| Idempotency-Key | {uuid} | 이체/주문 API 전용 |
 
 ---
 
@@ -136,9 +135,228 @@
 
 ---
 
+## BANK-ACCOUNT-001. 계좌 조회
+
+**GET** `/bank/accounts`
+
+### Query Parameters
+
+| 이름   | 타입   | 필수 | 설명                               |
+| ------ | ------ | ---- | ---------------------------------- |
+| status | String | X    | ACTIVE / DORMANT / LOCKED / CLOSED |
+
+### Response `200 OK`
+
+```json id="vk9q0m"
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "accountId": 1001,
+        "userId": 501,
+        "bankCode": "088",
+        "accountNumber": "110-123-456789",
+        "accountName": "내 급여통장",
+        "balance": 3500000,
+        "accountStatus": "ACTIVE"
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## BANK-ACCOUNT-002. 계좌 상세 조회
+
+**GET** `/bank/accounts/{accountId}`
+
+### Response `200 OK`
+
+```json id="dl7jkn"
+{
+  "success": true,
+  "data": {
+    "accountId": 1001,
+    "userId": 501,
+    "bankCode": "088",
+    "accountNumber": "110-123-456789",
+    "accountName": "내 급여통장",
+    "balance": 3500000,
+    "accountStatus": "ACTIVE",
+    "openedAt": "2024-01-15T09:00:00",
+    "closedAt": null,
+    "updatedAt": "2026-05-17T14:22:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+## BANK-ACCOUNT-003. 계좌 잔액 조회
+
+**GET** `/accounts/{accountId}/balance`
+
+### Response `200 OK`
+
+```json id="vr3zgd"
+{
+  "success": true,
+  "data": {
+    "accountId": 1001,
+    "balance": 3500000,
+    "updatedAt": "2026-05-18T10:15:00"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## BANK-ACCOUNT-004. 거래내역 조회
+
+**GET** `/bank/accounts/{accountId}/transactions`
+
+### Query Parameters
+
+| 이름     | 타입    | 필수 | 설명                     |
+| -------- | ------- | ---- | ------------------------ |
+| fromDate | Date    | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate   | Date    | X    | 조회 종료일 (YYYY-MM-DD) |
+| page     | Integer | X    | 페이지 번호 (기본값: 0)  |
+| size     | Integer | X    | 페이지 크기 (기본값: 20) |
+
+### Response `200 OK`
+
+```json id="0h2drx"
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "transactionId": 9001,
+        "transactionType": "DEPOSIT",
+        "transactionCategory": "급여",
+        "amount": 3000000,
+        "balanceAfter": 3500000,
+        "transactionChannel": "APP",
+        "transactionStatus": "SUCCESS",
+        "transactionAt": "2026-05-01T09:00:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 42,
+    "totalPages": 3
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## BANK-ACCOUNT-005. 거래 필터 조회
+
+**GET** `/bank/accounts/{accountId}/transactions/filter`
+
+### Query Parameters
+
+| 이름      | 타입    | 필수 | 설명                                                            |
+| --------- | ------- | ---- | --------------------------------------------------------------- |
+| type      | String  | X    | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
+| channel   | String  | X    | APP / AI_AGENT                                                  |
+| status    | String  | X    | SUCCESS / FAILED / CANCELLED                                    |
+| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD)                                        |
+| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD)                                        |
+| minAmount | Decimal | X    | 최소 거래 금액                                                  |
+| maxAmount | Decimal | X    | 최대 거래 금액                                                  |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)                                         |
+| size      | Integer | X    | 페이지 크기 (기본값: 20)                                        |
+
+### Response `200 OK`
+
+```json id="s0yjf6"
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "transactionId": 9005,
+        "transactionType": "WITHDRAW",
+        "transactionCategory": "식비",
+        "amount": 50000,
+        "balanceAfter": 3450000,
+        "transactionChannel": "APP",
+        "transactionStatus": "SUCCESS",
+        "transactionAt": "2026-05-10T13:22:00"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 5,
+    "totalPages": 1
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## BANK-ACCOUNT-006. 거래 카테고리 조회
+
+**GET** `/bank/accounts/{accountId}/transactions/categories`
+
+### Query Parameters
+
+| 이름     | 타입 | 필수 | 설명                     |
+| -------- | ---- | ---- | ------------------------ |
+| fromDate | Date | O    | 집계 시작일 (YYYY-MM-DD) |
+| toDate   | Date | O    | 집계 종료일 (YYYY-MM-DD) |
+
+### Response `200 OK`
+
+```json id="xq9yqv"
+{
+  "success": true,
+  "data": {
+    "categories": [
+      {
+        "category": "급여",
+        "totalAmount": 3000000,
+        "count": 1
+      },
+      {
+        "category": "식비",
+        "totalAmount": 280000,
+        "count": 12
+      },
+      {
+        "category": "교통",
+        "totalAmount": 95000,
+        "count": 8
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
 ## BANK-TRANSFER-001. 이체 실행
 
-**POST** `/baas/v1/bank/transfers`
+**POST** `/bank/transfers`
 
 > Write API
 > Idempotency-Key 필수
@@ -155,13 +373,13 @@
 }
 ```
 
-| 필드              | 타입      | 필수 | 설명           |
-| --------------- | ------- | -- | ------------ |
-| fromAccountId   | Long    | O  | 출금 계좌 ID     |
-| toBankCode      | String  | O  | 입금 은행 코드     |
-| toAccountNumber | String  | O  | 입금 계좌번호      |
-| transferAmount  | Decimal | O  | 이체 금액 (0 초과) |
-| requestedBy     | String  | O  | USER / AI    |
+| 필드            | 타입    | 필수 | 설명               |
+| --------------- | ------- | ---- | ------------------ |
+| fromAccountId   | Long    | O    | 출금 계좌 ID       |
+| toBankCode      | String  | O    | 입금 은행 코드     |
+| toAccountNumber | String  | O    | 입금 계좌번호      |
+| transferAmount  | Decimal | O    | 이체 금액 (0 초과) |
+| requestedBy     | String  | O    | USER / AI          |
 
 ### Response `201 Created`
 
@@ -181,17 +399,17 @@
 
 ### Error Cases
 
-| 상황       | 코드           | 메시지             |
-| -------- | ------------ | --------------- |
-| 잔액 부족    | TRANSFER_002 | 잔액이 부족합니다       |
+| 상황           | 코드         | 메시지                        |
+| -------------- | ------------ | ----------------------------- |
+| 잔액 부족      | TRANSFER_002 | 잔액이 부족합니다             |
 | 계좌 이상 상태 | ACCOUNT_003  | 계좌 상태가 유효하지 않습니다 |
-| 접근 불가    | ACCOUNT_002  | 본인 계좌가 아닙니다     |
+| 접근 불가      | ACCOUNT_002  | 본인 계좌가 아닙니다          |
 
 ---
 
 ## BANK-TRANSFER-002. 이체 승인
 
-**POST** `/baas/v1/bank/transfers/{transferId}/approve`
+**POST** `/bank/transfers/{transferId}/approve`
 
 > Saga 기반 분산 트랜잭션 Commit 단계 수행 API
 > 출금/입금 반영 및 최종 상태 확정 처리
@@ -214,16 +432,16 @@
 
 ### Error Cases
 
-| 상황      | 코드           | 메시지               |
-| ------- | ------------ | ----------------- |
+| 상황         | 코드         | 메시지                          |
+| ------------ | ------------ | ------------------------------- |
 | 이체 건 없음 | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
-| 중복 승인   | TRANSFER_003 | 이미 처리 완료된 이체입니다   |
+| 중복 승인    | TRANSFER_003 | 이미 처리 완료된 이체입니다     |
 
 ---
 
 ## BANK-TRANSFER-003. 이체 결과 조회
 
-**GET** `/baas/v1/bank/transfers/{transferId}`
+**GET** `/bank/transfers/{transferId}`
 
 ### Response `200 OK`
 
@@ -249,10 +467,10 @@
 
 ### Error Cases
 
-| 상황      | 코드           | 메시지               |
-| ------- | ------------ | ----------------- |
+| 상황         | 코드         | 메시지                          |
+| ------------ | ------------ | ------------------------------- |
 | 이체 건 없음 | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
-| 접근 불가   | TRANSFER_004 | 본인 이체 건이 아닙니다     |
+| 접근 불가    | TRANSFER_004 | 본인 이체 건이 아닙니다         |
 
 ---
 
@@ -262,13 +480,13 @@
 
 ## STOCK-SEARCH-001. 종목 검색
 
-**GET** `/baas/v1/stocks/search`
+**GET** `/stock/search`
 
 ### Query Parameters
 
-| 이름      | 타입     | 필수 | 설명          |
-| ------- | ------ | -- | ----------- |
-| keyword | String | O  | 종목명 또는 종목코드 |
+| 이름    | 타입   | 필수 | 설명                 |
+| ------- | ------ | ---- | -------------------- |
+| keyword | String | O    | 종목명 또는 종목코드 |
 
 ### Response `200 OK`
 
@@ -296,7 +514,7 @@
 
 ## STOCK-PRICE-001. 현재가 조회
 
-**GET** `/baas/v1/stocks/{stockCode}/price`
+**GET** `/stock/{stockCode}/price`
 
 ### Response `200 OK`
 
@@ -320,15 +538,15 @@
 
 ## STOCK-CHART-001. 차트 조회
 
-**GET** `/baas/v1/stocks/{stockCode}/charts`
+**GET** `/stock/{stockCode}/charts`
 
 ### Query Parameters
 
-| 이름       | 타입     | 필수 | 설명                       |
-| -------- | ------ | -- | ------------------------ |
-| interval | String | O  | DAILY / WEEKLY / MONTHLY |
-| fromDate | Date   | X  | 조회 시작일 (YYYY-MM-DD)      |
-| toDate   | Date   | X  | 조회 종료일 (YYYY-MM-DD)      |
+| 이름     | 타입   | 필수 | 설명                     |
+| -------- | ------ | ---- | ------------------------ |
+| interval | String | O    | DAILY / WEEKLY / MONTHLY |
+| fromDate | Date   | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate   | Date   | X    | 조회 종료일 (YYYY-MM-DD) |
 
 ### Response `200 OK`
 
@@ -355,9 +573,36 @@
 
 ---
 
-## STOCK-ACCOUNT-001. 예수금 조회
+## STOCK-ACCOUNT-001. 주문 가능 계좌 조회
 
-**GET** `/baas/v1/stocks/accounts/{accountId}/cash-balance`
+**GET** `/stock/accounts`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "accountId": 2001,
+        "accountNumber": "300-123-456789",
+        "accountName": "내 주식 계좌",
+        "bankCode": "039"
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+---
+
+## STOCK-ACCOUNT-002. 예수금 조회
+
+**GET** `/stock/accounts/{accountId}/cash-balance`
 
 ### Response `200 OK`
 
@@ -379,7 +624,7 @@
 
 ## STOCK-ORDER-001. 주문 생성
 
-**POST** `/baas/v1/stocks/accounts/{accountId}/orders`
+**POST** `/stock/accounts/{accountId}/orders`
 
 > Write API
 > Pin-Token 필수
@@ -399,13 +644,13 @@
 
 ### Request Fields
 
-| 필드          | 타입      | 필수 | 설명                              |
-| ----------- | ------- | -- | ------------------------------- |
-| stockCode   | String  | O  | 종목 코드                           |
-| orderType   | String  | O  | BUY / SELL                      |
-| orderMethod | String  | O  | MARKET / LIMIT                  |
-| quantity    | Integer | O  | 주문 수량                           |
-| price       | Integer | X  | 주문 가격 (LIMIT 시 필수, MARKET 시 null) |
+| 필드        | 타입    | 필수 | 설명                                      |
+| ----------- | ------- | ---- | ----------------------------------------- |
+| stockCode   | String  | O    | 종목 코드                                 |
+| orderType   | String  | O    | BUY / SELL                                |
+| orderMethod | String  | O    | MARKET / LIMIT                            |
+| quantity    | Integer | O    | 주문 수량                                 |
+| price       | Integer | X    | 주문 가격 (LIMIT 시 필수, MARKET 시 null) |
 
 ### Response `201 Created`
 
@@ -432,16 +677,16 @@
 
 ### Error Cases
 
-| 상황          | 코드        | 메시지           |
-| ----------- | --------- | ------------- |
+| 상황                | 코드      | 메시지                      |
+| ------------------- | --------- | --------------------------- |
 | 주문 가능 금액 부족 | ORDER_001 | 주문 가능 금액이 부족합니다 |
-| 보유 수량 부족    | ORDER_002 | 보유 수량이 부족합니다   |
+| 보유 수량 부족      | ORDER_002 | 보유 수량이 부족합니다      |
 
 ---
 
 ## STOCK-ORDER-002. 주문 취소
 
-**POST** `/baas/v1/stocks/orders/{orderId}/cancel`
+**POST** `/stock/orders/{orderId}/cancel`
 
 > Write API
 > Pin-Token 필수
@@ -470,16 +715,16 @@
 
 ## STOCK-ORDER-003. 주문 조회
 
-**GET** `/baas/v1/stocks/accounts/{accountId}/orders`
+**GET** `/stock/accounts/{accountId}/orders`
 
 ### Query Parameters
 
-| 이름        | 타입      | 필수 | 설명                                                          |
-| --------- | ------- | -- | ----------------------------------------------------------- |
-| status    | String  | X  | REQUESTED / PARTIAL_FILLED / FILLED / CANCELLED / FAILED    |
-| orderType | String  | X  | BUY / SELL                                                  |
-| page      | Integer | X  | 페이지 번호 (기본값: 0)                                             |
-| size      | Integer | X  | 페이지 크기 (기본값: 20)                                            |
+| 이름      | 타입    | 필수 | 설명                                                     |
+| --------- | ------- | ---- | -------------------------------------------------------- |
+| status    | String  | X    | REQUESTED / PARTIAL_FILLED / FILLED / CANCELLED / FAILED |
+| orderType | String  | X    | BUY / SELL                                               |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)                                  |
+| size      | Integer | X    | 페이지 크기 (기본값: 20)                                 |
 
 ### Response `200 OK`
 
@@ -517,7 +762,7 @@
 
 ## STOCK-ORDER-004. 주문 상세 조회
 
-**GET** `/baas/v1/stocks/orders/{orderId}`
+**GET** `/stock/orders/{orderId}`
 
 ### Response `200 OK`
 
@@ -550,17 +795,17 @@
 
 ## STOCK-EXECUTION-001. 체결 조회
 
-**GET** `/baas/v1/stocks/accounts/{accountId}/executions`
+**GET** `/stock/accounts/{accountId}/executions`
 
 ### Query Parameters
 
-| 이름        | 타입      | 필수 | 설명                  |
-| --------- | ------- | -- | ------------------- |
-| stockCode | String  | X  | 종목 코드               |
-| fromDate  | Date    | X  | 조회 시작일 (YYYY-MM-DD) |
-| toDate    | Date    | X  | 조회 종료일 (YYYY-MM-DD) |
-| page      | Integer | X  | 페이지 번호 (기본값: 0)     |
-| size      | Integer | X  | 페이지 크기 (기본값: 20)    |
+| 이름      | 타입    | 필수 | 설명                     |
+| --------- | ------- | ---- | ------------------------ |
+| stockCode | String  | X    | 종목 코드                |
+| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD) |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)  |
+| size      | Integer | X    | 페이지 크기 (기본값: 20) |
 
 ### Response `200 OK`
 
@@ -595,7 +840,7 @@
 
 ## STOCK-RETURN-001. 수익률 조회
 
-**GET** `/baas/v1/stocks/accounts/{accountId}/returns`
+**GET** `/stock/accounts/{accountId}/returns`
 
 ### Response `200 OK`
 
@@ -614,6 +859,35 @@
 }
 ```
 
+## STOCK-HOLDING-001. 보유 종목 조회
+
+**GET** `/stock/accounts/{accountId}/holdings`
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "stockCode": "005930",
+        "stockName": "삼성전자",
+        "quantity": 20,
+        "averagePrice": 78000,
+        "currentPrice": 82000,
+        "evaluationAmount": 1640000,
+        "unrealizedProfit": 80000,
+        "profitRate": 5.12
+      }
+    ]
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
 ---
 
 # COMMON API
@@ -622,13 +896,13 @@
 
 ## TOTAL-001. 포트폴리오 조회
 
-**GET** `/baas/v1/total/portfolio`
+**GET** `/total/portfolio`
 
 ### Query Parameters
 
-| 이름        | 타입   | 필수 | 설명        |
-| --------- | ---- | -- | --------- |
-| accountId | Long | O  | 증권 계좌 ID  |
+| 이름      | 타입 | 필수 | 설명         |
+| --------- | ---- | ---- | ------------ |
+| accountId | Long | O    | 증권 계좌 ID |
 
 ### Response `200 OK`
 

@@ -1,8 +1,101 @@
 # mydata-server API 명세
 
-> Port: `8084`
+> **Base URL:** `/mydata/v1`
+> **Port:** 8084
+> **사용 구간:** 외부 서비스 <-> Mydata Server
 
+````
+
+
+# MYDATA API
+
+---
+
+## 1-1. 마이데이터 연동
+**POST** `/connect`
+
+**Request Body**
+```json
+{
+  "institutionCode": "004",
+  "consentYn": true
+}
+````
+
+| 필드            | 타입    | 필수 | 설명                             |
+| --------------- | ------- | ---- | -------------------------------- |
+| institutionCode | String  | O    | 연동할 기관 코드                 |
+| consentYn       | Boolean | O    | 마이데이터 동의 여부 (true 필수) |
+
+**Response** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "linkedAccountId": 1,
+    "institutionCode": "004",
+    "institutionName": "국민은행",
+    "syncedAt": "2026-05-17T12:00:00"
+  },
+  "meta": { "traceId": "uuid" }
+}
 ```
+
+| 상황             | 코드       | 메시지                 |
+| ---------------- | ---------- | ---------------------- |
+| 이미 연동된 기관 | MYDATA_001 | 이미 연동된 기관입니다 |
+
+---
+
+## 1-2. 연동 목록 조회
+
+**GET** `/connections` | Bearer Token 필요
+
+**Request Body** 없음
+
+**Response** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "connections": [
+      {
+        "linkedAccountId": 1,
+        "institutionCode": "004",
+        "institutionName": "국민은행",
+        "institutionType": "BANK",
+        "accountMasking": "****-****-1234",
+        "syncedAt": "2026-05-17T12:00:00"
+      }
+    ]
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
+---
+
+## 1-3. 동기화 요청
+
+**POST** `/sync` | Bearer Token 필요
+
+**Request Body** 없음
+
+**Response** `202 Accepted`
+
+```json
+{
+  "success": true,
+  "data": {
+    "syncRequested": true
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
+---
 
 # BANK API
 
@@ -10,13 +103,13 @@
 
 ## MYDATA-BANK-ACCOUNT-001. 계좌 조회
 
-**GET** `/mydata/v1/accounts`
+**GET** `/bank/accounts`
 
 ### Query Parameters
 
-| 이름     | 타입     | 필수 | 설명                                 |
-| ------ | ------ | -- | ---------------------------------- |
-| status | String | X  | ACTIVE / DORMANT / LOCKED / CLOSED |
+| 이름   | 타입   | 필수 | 설명                               |
+| ------ | ------ | ---- | ---------------------------------- |
+| status | String | X    | ACTIVE / DORMANT / LOCKED / CLOSED |
 
 ### Response `200 OK`
 
@@ -45,7 +138,7 @@
 
 ## MYDATA-BANK-ACCOUNT-002. 계좌 상세 조회
 
-**GET** `/mydata/v1/accounts/{accountId}`
+**GET** /bank/accounts/{accountId}`
 
 ### Response `200 OK`
 
@@ -72,16 +165,16 @@
 
 ### Error Codes
 
-| 상황    | 코드          | 메시지              |
-| ----- | ----------- | ---------------- |
+| 상황      | 코드        | 메시지                       |
+| --------- | ----------- | ---------------------------- |
 | 계좌 없음 | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
-| 접근 불가 | ACCOUNT_002 | 본인 계좌가 아닙니다      |
+| 접근 불가 | ACCOUNT_002 | 본인 계좌가 아닙니다         |
 
 ---
 
 ## MYDATA-BANK-ACCOUNT-003. 잔액 조회
 
-**GET** `/mydata/v1/accounts/{accountId}/balance`
+**GET** `/bank/accounts/{accountId}/balance`
 
 ### Response `200 OK`
 
@@ -91,7 +184,6 @@
   "data": {
     "accountId": 1001,
     "balance": 3500000,
-    "availableBalance": 3200000,
     "updatedAt": "2026-05-18T10:15:00"
   },
   "meta": {
@@ -102,30 +194,30 @@
 
 ### Error Codes
 
-| 상황    | 코드          | 메시지              |
-| ----- | ----------- | ---------------- |
+| 상황      | 코드        | 메시지                       |
+| --------- | ----------- | ---------------------------- |
 | 계좌 없음 | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
-| 접근 불가 | ACCOUNT_002 | 본인 계좌가 아닙니다      |
+| 접근 불가 | ACCOUNT_002 | 본인 계좌가 아닙니다         |
 
 ---
 
 ## MYDATA-BANK-ACCOUNT-004. 거래내역 조회
 
-**GET** `/mydata/v1/accounts/{accountId}/transactions`
+**GET** `/bank/accounts/{accountId}/transactions`
 
 ### Query Parameters
 
-| 이름        | 타입      | 필수 | 설명                                                              |
-| --------- | ------- | -- | --------------------------------------------------------------- |
-| type      | String  | X  | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
-| channel   | String  | X  | APP / AI_AGENT                                                  |
-| status    | String  | X  | SUCCESS / FAILED / CANCELLED                                    |
-| fromDate  | Date    | X  | 조회 시작일 (YYYY-MM-DD)                                             |
-| toDate    | Date    | X  | 조회 종료일 (YYYY-MM-DD)                                             |
-| minAmount | Decimal | X  | 최소 거래 금액                                                        |
-| maxAmount | Decimal | X  | 최대 거래 금액                                                        |
-| page      | Integer | X  | 페이지 번호 (기본값: 0)                                                 |
-| size      | Integer | X  | 페이지 크기 (기본값: 20)                                                |
+| 이름      | 타입    | 필수 | 설명                                                            |
+| --------- | ------- | ---- | --------------------------------------------------------------- |
+| type      | String  | X    | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
+| channel   | String  | X    | APP / AI_AGENT                                                  |
+| status    | String  | X    | SUCCESS / FAILED / CANCELLED                                    |
+| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD)                                        |
+| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD)                                        |
+| minAmount | Decimal | X    | 최소 거래 금액                                                  |
+| maxAmount | Decimal | X    | 최대 거래 금액                                                  |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)                                         |
+| size      | Integer | X    | 페이지 크기 (기본값: 20)                                        |
 
 ### Response `200 OK`
 
@@ -158,24 +250,24 @@
 
 ### Error Codes
 
-| 상황     | 코드          | 메시지              |
-| ------ | ----------- | ---------------- |
+| 상황        | 코드        | 메시지                       |
+| ----------- | ----------- | ---------------------------- |
 | 입력값 오류 | VALID_001   | 입력값이 올바르지 않습니다   |
-| 계좌 없음  | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
-| 접근 불가  | ACCOUNT_002 | 본인 계좌가 아닙니다      |
+| 계좌 없음   | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
+| 접근 불가   | ACCOUNT_002 | 본인 계좌가 아닙니다         |
 
 ---
 
 ## MYDATA-BANK-ACCOUNT-005. 거래 카테고리 조회
 
-**GET** `/mydata/v1/accounts/{accountId}/transactions/categories`
+**GET** `/bank/accounts/{accountId}/transactions/categories`
 
 ### Query Parameters
 
-| 이름       | 타입   | 필수 | 설명                  |
-| -------- | ---- | -- | ------------------- |
-| fromDate | Date | O  | 집계 시작일 (YYYY-MM-DD) |
-| toDate   | Date | O  | 집계 종료일 (YYYY-MM-DD) |
+| 이름     | 타입 | 필수 | 설명                     |
+| -------- | ---- | ---- | ------------------------ |
+| fromDate | Date | O    | 집계 시작일 (YYYY-MM-DD) |
+| toDate   | Date | O    | 집계 종료일 (YYYY-MM-DD) |
 
 ### Response `200 OK`
 
@@ -209,12 +301,11 @@
 
 ### Error Codes
 
-| 상황     | 코드          | 메시지              |
-| ------ | ----------- | ---------------- |
+| 상황        | 코드        | 메시지                       |
+| ----------- | ----------- | ---------------------------- |
 | 입력값 오류 | VALID_001   | 입력값이 올바르지 않습니다   |
-| 계좌 없음  | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
-| 접근 불가  | ACCOUNT_002 | 본인 계좌가 아닙니다      |
-
+| 계좌 없음   | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
+| 접근 불가   | ACCOUNT_002 | 본인 계좌가 아닙니다         |
 
 ---
 
@@ -224,7 +315,7 @@
 
 ## MYDATA-STOCK-ACCOUNT-001. 주문 가능 계좌 조회
 
-**GET** `/mydata/v1/stock/accounts`
+**GET** `/stock/accounts`
 
 ### Response `200 OK`
 
@@ -251,14 +342,14 @@
 
 ## MYDATA-STOCK-HOLDING-001. 보유 종목 조회
 
-**GET** `/mydata/v1/stock/accounts/{accountId}/holdings`
+**GET** `/stock/accounts/{accountId}/holdings`
 
 ### Query Parameters
 
-| 이름   | 타입      | 필수 | 설명               |
-| ---- | ------- | -- | ---------------- |
-| page | Integer | X  | 페이지 번호 (기본값: 0)  |
-| size | Integer | X  | 페이지 크기 (기본값: 20) |
+| 이름 | 타입    | 필수 | 설명                     |
+| ---- | ------- | ---- | ------------------------ |
+| page | Integer | X    | 페이지 번호 (기본값: 0)  |
+| size | Integer | X    | 페이지 크기 (기본값: 20) |
 
 ### Response `200 OK`
 
@@ -293,7 +384,7 @@
 
 ## MYDATA-STOCK-PORTFOLIO-001. 포트폴리오 조회
 
-**GET** `/mydata/v1/stock/accounts/{accountId}/portfolio`
+**GET** `/stock/accounts/{accountId}/portfolio`
 
 ### Response `200 OK`
 
@@ -322,20 +413,20 @@
 
 ### Portfolio Field 설명
 
-| 필드            | 설명        |
-| ------------- | --------- |
-| totalAsset    | 총 자산      |
+| 필드          | 설명           |
+| ------------- | -------------- |
+| totalAsset    | 총 자산        |
 | cashAsset     | 현금성 자산    |
-| stockAsset    | 주식 자산     |
+| stockAsset    | 주식 자산      |
 | savingAsset   | 예적금 자산    |
-| availableCash | 주문 가능 현금  |
-| assetRatio    | 자산 비율 (%) |
+| availableCash | 주문 가능 현금 |
+| assetRatio    | 자산 비율 (%)  |
 
 ---
 
 ## MYDATA-STOCK-RETURN-001. 수익률 조회
 
-**GET** `/mydata/v1/stock/accounts/{accountId}/returns`
+**GET** `/stock/accounts/{accountId}/returns`
 
 ### Response `200 OK`
 
@@ -358,7 +449,7 @@
 
 ## MYDATA-STOCK-ASSET-001. 자산 요약 조회
 
-**GET** `/mydata/v1/stock/assets/summary`
+**GET** `/stock/assets/summary`
 
 ### Response `200 OK`
 
@@ -382,10 +473,10 @@
 
 ### Summary Field 설명
 
-| 필드                    | 설명      |
-| --------------------- | ------- |
+| 필드                  | 설명         |
+| --------------------- | ------------ |
 | totalEvaluationAmount | 총 평가 금액 |
 | totalPurchaseAmount   | 총 매수 금액 |
 | totalProfit           | 총 평가 손익 |
-| totalProfitRate       | 총 수익률   |
+| totalProfitRate       | 총 수익률    |
 | holdingCount          | 보유 종목 수 |
