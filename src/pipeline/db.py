@@ -5,48 +5,53 @@ import asyncpg
 
 logger = logging.getLogger(__name__)
 
-_pool: asyncpg.Pool | None = None
+_analytics_pool: asyncpg.Pool | None = None
+_vector_pool: asyncpg.Pool | None = None
 
 
-async def get_pool() -> asyncpg.Pool:
-    global _pool
-    if _pool is None:
-        _pool = await asyncpg.create_pool(
-            host=os.getenv("DB_HOST", "localhost"),
-            port=int(os.getenv("DB_PORT", "5432")),
-            user=os.getenv("DB_USER", "admin"),
-            password=os.getenv("DB_PASSWORD", "1234"),
-            database=os.getenv("DB_NAME", "analytics"),
+async def get_analytics_pool() -> asyncpg.Pool:
+    global _analytics_pool
+    if _analytics_pool is None:
+        _analytics_pool = await asyncpg.create_pool(
+            host=os.getenv("ANALYTICS_DB_HOST", "localhost"),
+            port=int(os.getenv("ANALYTICS_DB_PORT", "5433")),
+            user=os.getenv("ANALYTICS_DB_USER", "admin"),
+            password=os.getenv("ANALYTICS_DB_PASSWORD", "1234"),
+            database=os.getenv("ANALYTICS_DB_NAME", "finance_analytics"),
             min_size=2,
             max_size=10,
         )
-    return _pool
+    return _analytics_pool
+
+
+async def get_vector_pool() -> asyncpg.Pool:
+    global _vector_pool
+    if _vector_pool is None:
+        _vector_pool = await asyncpg.create_pool(
+            host=os.getenv("VECTOR_DB_HOST", "localhost"),
+            port=int(os.getenv("VECTOR_DB_PORT", "5435")),
+            user=os.getenv("VECTOR_DB_USER", "admin"),
+            password=os.getenv("VECTOR_DB_PASSWORD", "1234"),
+            database=os.getenv("VECTOR_DB_NAME", "finance_vector"),
+            min_size=2,
+            max_size=10,
+        )
+    return _vector_pool
 
 
 async def close_pool():
-    global _pool
-    if _pool:
-        await _pool.close()
-        _pool = None
+    global _analytics_pool, _vector_pool
+    if _analytics_pool:
+        await _analytics_pool.close()
+        _analytics_pool = None
+    if _vector_pool:
+        await _vector_pool.close()
+        _vector_pool = None
 
 
 async def create_tables():
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS common_knowledge (
-                id                BIGSERIAL PRIMARY KEY,
-                category          VARCHAR(100) NOT NULL,
-                title             VARCHAR(255),
-                chunk_text        TEXT NOT NULL,
-                embedding         vector(1024),
-                embedding_version VARCHAR(50),
-                created_at        TIMESTAMP DEFAULT NOW()
-            );
-        """)
-
+    analytics_pool = await get_analytics_pool()
+    async with analytics_pool.acquire() as conn:
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS analysis_raw_transaction (
                 id                     BIGSERIAL PRIMARY KEY,
@@ -147,6 +152,22 @@ async def create_tables():
                 recommendation_content  TEXT NOT NULL,
                 applied_yn              BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at              TIMESTAMP NOT NULL
+            );
+        """)
+
+    vector_pool = await get_vector_pool()
+    async with vector_pool.acquire() as conn:
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS common_knowledge (
+                id                BIGSERIAL PRIMARY KEY,
+                category          VARCHAR(100) NOT NULL,
+                title             VARCHAR(255),
+                chunk_text        TEXT NOT NULL,
+                embedding         vector(1024),
+                embedding_version VARCHAR(50),
+                created_at        TIMESTAMP DEFAULT NOW()
             );
         """)
 

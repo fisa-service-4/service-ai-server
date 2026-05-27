@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 
 from src.agent.llm import MODEL, client
-from src.pipeline.db import get_pool
+from src.pipeline.db import get_analytics_pool
 
 
 async def _fetch_monthly_data(conn, user_id: int) -> tuple[list, list]:
@@ -108,7 +108,7 @@ def _parse_llm_response(content: str) -> dict:
 
 
 async def run(user_id: int):
-    pool = await get_pool()
+    pool = await get_analytics_pool()
 
     async with pool.acquire() as conn:
         income_rows, expense_rows = await _fetch_monthly_data(conn, user_id)

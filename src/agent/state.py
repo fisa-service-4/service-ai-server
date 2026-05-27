@@ -1,3 +1,4 @@
+# 노드 간에 공유되는 공용 저장소/ 각 노드들은 이 딕셔너리를 읽고 변경할 부분만 반환
 from typing import TypedDict
 
 

@@ -2,7 +2,7 @@ import logging
 
 from FlagEmbedding import BGEM3FlagModel
 
-from src.pipeline.db import get_pool
+from src.pipeline.db import get_vector_pool
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ async def search_rag_context(user_id: str, query: str, top_k: int = 3) -> str:
         return ""
 
     vector = _embed_query(query)
-    pool = await get_pool()
+    pool = await get_vector_pool()
 
     async with pool.acquire() as conn:
         personal_rows = await conn.fetch(

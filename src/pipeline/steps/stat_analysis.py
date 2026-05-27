@@ -1,7 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 
-from src.pipeline.db import get_pool
+from src.pipeline.db import get_analytics_pool
 
 EXPENSE_COLUMN_MAP = {
     "식비":   "food_expense",
@@ -28,7 +28,7 @@ def _growth_rate(current: float, previous: float) -> float | None:
 
 
 async def run(user_id: int):
-    pool = await get_pool()
+    pool = await get_analytics_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """

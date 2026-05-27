@@ -4,7 +4,7 @@ from datetime import datetime
 
 from FlagEmbedding import BGEM3FlagModel
 
-from src.pipeline.db import get_pool
+from src.pipeline.db import get_analytics_pool, get_vector_pool
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,6 @@ def _embed(texts: list[str]) -> list[list[float]]:
 async def _fetch_latest_analysis(conn, user_id: int) -> list[dict]:
     chunks = []
 
-    # 소비 패턴
     row = await conn.fetchrow(
         """
         SELECT pattern_id, consumption_type, summary
@@ -49,7 +48,6 @@ async def _fetch_latest_analysis(conn, user_id: int) -> list[dict]:
             "chunk_text": f"소비 성향: {row['consumption_type']}\n{row['summary']}",
         })
 
-    # 브리핑
     row = await conn.fetchrow(
         """
         SELECT briefing_history_id, briefing_summary
@@ -67,7 +65,6 @@ async def _fetch_latest_analysis(conn, user_id: int) -> list[dict]:
             "chunk_text": row["briefing_summary"],
         })
 
-    # 추천
     rows = await conn.fetch(
         """
         SELECT recommendation_id, recommendation_type, recommendation_content
@@ -92,26 +89,28 @@ async def _fetch_latest_analysis(conn, user_id: int) -> list[dict]:
 
 
 async def run(user_id: int):
-    pool = await get_pool()
+    analytics_pool = await get_analytics_pool()
+    vector_pool = await get_vector_pool()
 
-    async with pool.acquire() as conn:
-        chunks = await _fetch_latest_analysis(conn, user_id)
+    async with analytics_pool.acquire() as analytics_conn:
+        chunks = await _fetch_latest_analysis(analytics_conn, user_id)
 
-        if not chunks:
-            logger.warning("[Embedding] 임베딩할 분석 데이터 없음 - user_id=%s", user_id)
-            return
+    if not chunks:
+        logger.warning("[Embedding] 임베딩할 분석 데이터 없음 - user_id=%s", user_id)
+        return
 
-        texts = [c["chunk_text"] for c in chunks]
-        vectors = _embed(texts)
+    texts = [c["chunk_text"] for c in chunks]
+    vectors = _embed(texts)
 
-        now = datetime.now()
+    now = datetime.now()
+    async with vector_pool.acquire() as vector_conn:
         for chunk, vector in zip(chunks, vectors):
             vector_key = f"{user_id}:{chunk['vector_type']}:{chunk['reference_id']}"
-            await conn.execute(
+            await vector_conn.execute(
                 "DELETE FROM analysis_ai_vector_metadata WHERE vector_key = $1",
                 vector_key,
             )
-            await conn.execute(
+            await vector_conn.execute(
                 """
                 INSERT INTO analysis_ai_vector_metadata
                     (user_id, vector_type, reference_id, embedding_version,
@@ -128,4 +127,4 @@ async def run(user_id: int):
                 now,
             )
 
-        logger.info("[Embedding] 완료 - user_id=%s, chunks=%d", user_id, len(chunks))
+    logger.info("[Embedding] 완료 - user_id=%s, chunks=%d", user_id, len(chunks))
