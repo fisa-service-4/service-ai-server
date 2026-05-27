@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from src.pipeline.db import get_pool
+from src.pipeline.db import get_analytics_pool
 
 # user_id=1 기준 3개월치 거래 mock 데이터
 # source_transaction_id는 원본 운영 DB의 거래 ID를 의미 (여기선 임의 부여)
@@ -65,7 +65,7 @@ MOCK_ASSET_SNAPSHOT = {
 
 
 async def insert_mock_data():
-    pool = await get_pool()
+    pool = await get_analytics_pool()
     async with pool.acquire() as conn:
         # 중복 방지: 이미 데이터가 있으면 스킵
         count = await conn.fetchval("SELECT COUNT(*) FROM analysis_raw_transaction WHERE user_id = 1")

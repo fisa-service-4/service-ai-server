@@ -13,7 +13,7 @@ load_dotenv()
 from FlagEmbedding import BGEM3FlagModel
 
 from src.pipeline.data.common_knowledge import DOCUMENTS
-from src.pipeline.db import get_pool, close_pool
+from src.pipeline.db import get_vector_pool, close_pool
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +30,21 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 
 
 async def seed():
-    pool = await get_pool()
+    pool = await get_vector_pool()
+
+    async with pool.acquire() as conn:
+        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS common_knowledge (
+                id                BIGSERIAL PRIMARY KEY,
+                category          VARCHAR(100) NOT NULL,
+                title             VARCHAR(255),
+                chunk_text        TEXT NOT NULL,
+                embedding         vector(1024),
+                embedding_version VARCHAR(50),
+                created_at        TIMESTAMP DEFAULT NOW()
+            );
+        """)
 
     texts = [doc["chunk_text"] for doc in DOCUMENTS]
     vectors = embed_texts(texts)

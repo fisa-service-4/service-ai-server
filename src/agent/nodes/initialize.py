@@ -2,7 +2,7 @@ import logging
 from decimal import Decimal
 
 from src.agent.state import ChatAgentState
-from src.pipeline.db import get_pool
+from src.pipeline.db import get_analytics_pool
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ async def initialize_node(state: ChatAgentState) -> dict:
     try:
         uid = int(user_id) if user_id else None
         if uid:
-            pool = await get_pool()
+            pool = await get_analytics_pool()
             async with pool.acquire() as conn:
                 income_row = await conn.fetchrow(
                     """SELECT year_month, freelancer_income, salary_income,

@@ -1,9 +1,9 @@
 from src.agent.tools.client import get, post
-from src.pipeline.db import get_pool
+from src.pipeline.db import get_analytics_pool
 
 
 async def get_analysis_data(user_id: str) -> dict:
-    pool = await get_pool()
+    pool = await get_analytics_pool()
     async with pool.acquire() as conn:
         pattern = await conn.fetchrow(
             "SELECT consumption_type, summary, risk_score FROM analysis_consumption_pattern WHERE user_id = $1 ORDER BY analyzed_at DESC LIMIT 1",
