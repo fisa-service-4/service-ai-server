@@ -10,6 +10,11 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# CPU-only torch 먼저 설치해서 CUDA 버전(~2GB) 대신 CPU 버전(~200MB) 사용
+RUN pip install --no-cache-dir \
+    --prefix=/install \
+    torch --index-url https://download.pytorch.org/whl/cpu
+
 RUN pip install --no-cache-dir \
     --prefix=/install \
     -r requirements.txt
