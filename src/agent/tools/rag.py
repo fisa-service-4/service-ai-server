@@ -1,27 +1,47 @@
 import logging
+import os
 
-from FlagEmbedding import BGEM3FlagModel
+# [BGE-M3] 프로덕션 임베딩 모델 - 빌드 속도 개선을 위해 개발 환경에서 Gemini로 대체
+# from FlagEmbedding import BGEM3FlagModel
+# _model: BGEM3FlagModel | None = None
+# def _get_model() -> BGEM3FlagModel:
+#     global _model
+#     if _model is None:
+#         logger.info("[RAG] BGE-M3 모델 로딩 중...")
+#         _model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)
+#         logger.info("[RAG] BGE-M3 모델 로딩 완료")
+#     return _model
+# def _embed_query(text: str) -> list[float]:
+#     model = _get_model()
+#     result = model.encode([text], return_dense=True)
+#     return result["dense_vecs"][0].tolist()
+
+from google import genai
 
 from src.pipeline.db import get_vector_pool
 
 logger = logging.getLogger(__name__)
 
-_model: BGEM3FlagModel | None = None
+_client: genai.Client | None = None
 
 
-def _get_model() -> BGEM3FlagModel:
-    global _model
-    if _model is None:
-        logger.info("[RAG] BGE-M3 모델 로딩 중...")
-        _model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)
-        logger.info("[RAG] BGE-M3 모델 로딩 완료")
-    return _model
+def _get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(
+            api_key=os.getenv("LLM_API_KEY"),
+            http_options={"api_version": "v1"},
+        )
+    return _client
 
 
 def _embed_query(text: str) -> list[float]:
-    model = _get_model()
-    result = model.encode([text], return_dense=True)
-    return result["dense_vecs"][0].tolist()
+    client = _get_client()
+    result = client.models.embed_content(
+        model="gemini-embedding-001",
+        contents=[text],
+    )
+    return result.embeddings[0].values
 
 
 async def search_rag_context(user_id: str, query: str, top_k: int = 3) -> str:
