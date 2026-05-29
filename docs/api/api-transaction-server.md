@@ -222,16 +222,21 @@
 
 ## BANK-ACCOUNT-004. 거래내역 조회
 
-**GET** `/bank/accounts/{accountId}/transactions`
+**GET** `/accounts/{accountId}/transactions`
 
 ### Query Parameters
 
-| 이름     | 타입    | 필수 | 설명                     |
-| -------- | ------- | ---- | ------------------------ |
-| fromDate | Date    | X    | 조회 시작일 (YYYY-MM-DD) |
-| toDate   | Date    | X    | 조회 종료일 (YYYY-MM-DD) |
-| page     | Integer | X    | 페이지 번호 (기본값: 0)  |
-| size     | Integer | X    | 페이지 크기 (기본값: 20) |
+| 이름      | 타입    | 필수 | 설명                                                            |
+| --------- | ------- | ---- | --------------------------------------------------------------- |
+| type      | String  | X    | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
+| channel   | String  | X    | APP / AI_AGENT                                                  |
+| status    | String  | X    | SUCCESS / FAILED / CANCELLED                                    |
+| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD)                                        |
+| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD)                                        |
+| minAmount | Decimal | X    | 최소 거래 금액                                                  |
+| maxAmount | Decimal | X    | 최대 거래 금액                                                  |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)                                         |
+| size      | Integer | X    | 페이지 크기 (기본값: 20)                                        |
 
 ### Response `200 OK`
 
@@ -264,58 +269,9 @@
 
 ---
 
-## BANK-ACCOUNT-005. 거래 필터 조회
+## BANK-ACCOUNT-005. 거래 카테고리 조회
 
-**GET** `/bank/accounts/{accountId}/transactions/filter`
-
-### Query Parameters
-
-| 이름      | 타입    | 필수 | 설명                                                            |
-| --------- | ------- | ---- | --------------------------------------------------------------- |
-| type      | String  | X    | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
-| channel   | String  | X    | APP / AI_AGENT                                                  |
-| status    | String  | X    | SUCCESS / FAILED / CANCELLED                                    |
-| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD)                                        |
-| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD)                                        |
-| minAmount | Decimal | X    | 최소 거래 금액                                                  |
-| maxAmount | Decimal | X    | 최대 거래 금액                                                  |
-| page      | Integer | X    | 페이지 번호 (기본값: 0)                                         |
-| size      | Integer | X    | 페이지 크기 (기본값: 20)                                        |
-
-### Response `200 OK`
-
-```json id="s0yjf6"
-{
-  "success": true,
-  "data": {
-    "content": [
-      {
-        "transactionId": 9005,
-        "transactionType": "WITHDRAW",
-        "transactionCategory": "식비",
-        "amount": 50000,
-        "balanceAfter": 3450000,
-        "transactionChannel": "APP",
-        "transactionStatus": "SUCCESS",
-        "transactionAt": "2026-05-10T13:22:00"
-      }
-    ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 5,
-    "totalPages": 1
-  },
-  "meta": {
-    "traceId": "uuid"
-  }
-}
-```
-
----
-
-## BANK-ACCOUNT-006. 거래 카테고리 조회
-
-**GET** `/bank/accounts/{accountId}/transactions/categories`
+**GET** `/accounts/{accountId}/transactions/categories`
 
 ### Query Parameters
 
@@ -627,7 +583,6 @@
 **POST** `/stock/accounts/{accountId}/orders`
 
 > Write API
-> Pin-Token 필수
 > Idempotency-Key 필수
 
 ### Request Body
@@ -689,7 +644,6 @@
 **POST** `/stock/orders/{orderId}/cancel`
 
 > Write API
-> Pin-Token 필수
 > Idempotency-Key 필수
 
 ### Response `200 OK`
