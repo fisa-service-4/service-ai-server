@@ -10,7 +10,18 @@ import logging
 from dotenv import load_dotenv
 load_dotenv()
 
-from FlagEmbedding import BGEM3FlagModel
+import os
+
+# [BGE-M3] 프로덕션 임베딩 모델 - 빌드 속도 개선을 위해 개발 환경에서 Gemini로 대체
+# from FlagEmbedding import BGEM3FlagModel
+# def embed_texts(texts: list[str]) -> list[list[float]]:
+#     logger.info("[Seed] BGE-M3 모델 로딩 중...")
+#     model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)
+#     logger.info("[Seed] 임베딩 시작 (%d개 문서)", len(texts))
+#     result = model.encode(texts, return_dense=True, batch_size=8)
+#     return [vec.tolist() for vec in result["dense_vecs"]]
+
+from google import genai
 
 from src.pipeline.data.common_knowledge import DOCUMENTS
 from src.pipeline.db import get_vector_pool, close_pool
@@ -18,15 +29,20 @@ from src.pipeline.db import get_vector_pool, close_pool
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-EMBEDDING_VERSION = "bge-m3-v1"
+EMBEDDING_VERSION = "gemini-embedding-004-v1"
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
-    logger.info("[Seed] BGE-M3 모델 로딩 중...")
-    model = BGEM3FlagModel("BAAI/bge-m3", use_fp16=True)
-    logger.info("[Seed] 임베딩 시작 (%d개 문서)", len(texts))
-    result = model.encode(texts, return_dense=True, batch_size=8)
-    return [vec.tolist() for vec in result["dense_vecs"]]
+    client = genai.Client(
+        api_key=os.getenv("LLM_API_KEY"),
+        http_options={"api_version": "v1"},
+    )
+    logger.info("[Seed] Gemini 임베딩 시작 (%d개 문서)", len(texts))
+    result = client.models.embed_content(
+        model="gemini-embedding-001",
+        contents=texts,
+    )
+    return [e.values for e in result.embeddings]
 
 
 async def seed():
@@ -40,7 +56,7 @@ async def seed():
                 category          VARCHAR(100) NOT NULL,
                 title             VARCHAR(255),
                 chunk_text        TEXT NOT NULL,
-                embedding         vector(1024),
+                embedding         vector(768),
                 embedding_version VARCHAR(50),
                 created_at        TIMESTAMP DEFAULT NOW()
             );
