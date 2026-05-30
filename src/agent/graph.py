@@ -54,8 +54,8 @@ def build_graph():
     graph.add_edge("Stock_Extract", "Stock_Check")
     graph.add_conditional_edges(
         "Stock_Check",
-        lambda x: "ready" if x.get("info_complete") else "more",
-        {"ready": "Verifier", "more": "Stock_Extract"}
+        lambda x: "done" if x.get("stock_info", {}).get("is_inquiry") else ("ready" if x.get("info_complete") else "more"),
+        {"done": "Save_Memory", "ready": "Verifier", "more": "Stock_Extract"}
     )
 
     graph.add_edge("Transfer_Extract", "Transfer_Check")
@@ -80,7 +80,6 @@ def build_graph():
 
     return graph.compile(
         checkpointer=MemorySaver(),
-        interrupt_before=["Verifier"],
     )
 
 

@@ -12,10 +12,11 @@ async def executor_node(state: ChatAgentState) -> dict:
     try:
         if intent == "STOCK":
             stock_info = state.get("stock_info", {})
+            account_id = stock_info.get("account_id")
             if stock_info.get("order_type") == "BUY":
-                result = await execute_buy_order(stock_info, token=token)
+                result = await execute_buy_order(stock_info, account_id=account_id, token=token)
             else:
-                result = await execute_sell_order(stock_info, token=token)
+                result = await execute_sell_order(stock_info, account_id=account_id, token=token)
 
         elif intent == "TRANSFER":
             result = await execute_transfer({

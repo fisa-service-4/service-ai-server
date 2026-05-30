@@ -77,8 +77,24 @@ async def send_message(
         "messages": session["messages"],
     }
 
+    import logging
+    from langgraph.types import Command
+    _log = logging.getLogger(__name__)
+
+    # interrupt() 대기 상태 감지
+    is_interrupted = False
     try:
-        result = await chat_graph.ainvoke(initial_state, config=config)
+        snapshot = chat_graph.get_state(config)
+        is_interrupted = snapshot is not None and bool(snapshot.next)
+    except Exception:
+        pass
+
+    try:
+        if is_interrupted:
+            # PIN 입력값을 resume 값으로 전달
+            result = await chat_graph.ainvoke(Command(resume=body.message), config=config)
+        else:
+            result = await chat_graph.ainvoke(initial_state, config=config)
 
         ai_messages = [m for m in result.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
         ai_content = ai_messages[-1]["content"] if ai_messages else "처리가 완료되었습니다."
@@ -98,12 +114,7 @@ async def send_message(
             "actionRequired": action_required,
         })
     except BaseException as e:
-        import logging
-        _log = logging.getLogger(__name__)
-
         if _GraphInterrupt and isinstance(e, _GraphInterrupt):
-            # Graph paused before Verifier (PIN confirmation needed).
-            # Extract the last saved state to return the AI recommendation.
             try:
                 snapshot = chat_graph.get_state(config)
                 sv = snapshot.values if snapshot else {}

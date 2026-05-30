@@ -45,6 +45,7 @@ def _embed(texts: list[str]) -> list[list[float]]:
     result = client.models.embed_content(
         model="gemini-embedding-001",
         contents=texts,
+        config={"output_dimensionality": 1024},
     )
     return [e.values for e in result.embeddings]
 
