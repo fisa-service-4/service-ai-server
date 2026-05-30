@@ -691,11 +691,11 @@
 
 ---
 
-# 5-1. 계좌 관리 API
+# 5. 계좌 관리 API
 
 ---
 
-## 계좌 역할 설정
+## 5-1. 계좌 역할 설정
 
 **PATCH** `/accounts/{accountId}/role` | Bearer Token 필요
 
@@ -820,22 +820,27 @@
 
 ---
 
-## 5-5. 거래내역 조회
+## 5-5. 거래 내역 조회
 
 **GET** `/accounts/{accountId}/transactions` | Bearer Token 필요
 
-**Query Parameters**
+### Query Parameters
 
-| 이름 | 타입    | 필수 | 설명                      |
-| ---- | ------- | ---- | ------------------------- |
-| from | Date    | X    | 조회 시작일 (YYYY-MM-DD)  |
-| to   | Date    | X    | 조회 종료일 (YYYY-MM-DD)  |
-| page | Integer | X    | 페이지 번호 (default: 0)  |
-| size | Integer | X    | 페이지 크기 (default: 20) |
+| 이름      | 타입    | 필수 | 설명                                                            |
+| --------- | ------- | ---- | --------------------------------------------------------------- |
+| type      | String  | X    | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
+| channel   | String  | X    | APP / AI_AGENT                                                  |
+| status    | String  | X    | SUCCESS / FAILED / CANCELLED                                    |
+| fromDate  | Date    | X    | 조회 시작일 (YYYY-MM-DD)                                        |
+| toDate    | Date    | X    | 조회 종료일 (YYYY-MM-DD)                                        |
+| minAmount | Decimal | X    | 최소 거래 금액                                                  |
+| maxAmount | Decimal | X    | 최대 거래 금액                                                  |
+| page      | Integer | X    | 페이지 번호 (기본값: 0)                                         |
+| size      | Integer | X    | 페이지 크기 (기본값: 20)                                        |
 
-**Response** `200 OK`
+### Response `200 OK`
 
-```json
+```json id="0h2drx"
 {
   "success": true,
   "data": {
@@ -846,6 +851,7 @@
         "transactionCategory": "급여",
         "amount": 3000000,
         "balanceAfter": 3500000,
+        "transactionChannel": "APP",
         "transactionStatus": "SUCCESS",
         "transactionAt": "2026-05-01T09:00:00"
       }
@@ -855,75 +861,25 @@
     "totalElements": 42,
     "totalPages": 3
   },
-  "meta": { "traceId": "uuid" }
+  "meta": {
+    "traceId": "uuid"
+  }
 }
 ```
 
-| 상황           | 코드        | 메시지                       |
-| -------------- | ----------- | ---------------------------- |
-| 날짜 형식 오류 | VALID_001   | 입력값이 올바르지 않습니다   |
-| 계좌 없음      | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
-| 접근 불가      | ACCOUNT_002 | 본인 계좌가 아닙니다         |
+## 5-6. 거래 카테고리 조회
 
----
-
-## 5-6. 거래내역 필터 조회
-
-**GET** `/accounts/{accountId}/transactions/filter` | Bearer Token 필요
-
-**Query Parameters**
-
-| 이름      | 타입    | 필수 | 설명                                                            |
-| --------- | ------- | ---- | --------------------------------------------------------------- |
-| type      | String  | X    | DEPOSIT / WITHDRAW / TRANSFER_IN / TRANSFER_OUT / AUTO_TRANSFER |
-| channel   | String  | X    | APP / AI_AGENT                                                  |
-| status    | String  | X    | SUCCESS / FAILED / CANCELLED                                    |
-| from      | Date    | X    | 조회 시작일 (YYYY-MM-DD)                                        |
-| to        | Date    | X    | 조회 종료일 (YYYY-MM-DD)                                        |
-| minAmount | Decimal | X    | 최소 거래 금액                                                  |
-| maxAmount | Decimal | X    | 최대 거래 금액                                                  |
-| page      | Integer | X    | 페이지 번호 (default: 0)                                        |
-| size      | Integer | X    | 페이지 크기 (default: 20)                                       |
-
-**Response** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": {
-    "content": [
-      {
-        "transactionId": 9005,
-        "transactionType": "WITHDRAW",
-        "transactionCategory": "식비",
-        "amount": 50000,
-        "balanceAfter": 3450000,
-        "transactionChannel": "APP",
-        "transactionStatus": "SUCCESS",
-        "transactionAt": "2026-05-10T13:22:00"
-      }
-    ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 5,
-    "totalPages": 1
-  },
-  "meta": { "traceId": "uuid" }
-}
-```
-
-````
-## 5-7. 거래 카테고리 조회
 **GET** `/accounts/{accountId}/transactions/categories` | Bearer Token 필요
 
 **Query Parameters**
 
-| 이름 | 타입 | 필수 | 설명 |
-| --- | --- | --- | --- |
-| from | Date | O | 집계 시작일 (YYYY-MM-DD) |
-| to | Date | O | 집계 종료일 (YYYY-MM-DD) |
+| 이름 | 타입 | 필수 | 설명                     |
+| ---- | ---- | ---- | ------------------------ |
+| from | Date | O    | 집계 시작일 (YYYY-MM-DD) |
+| to   | Date | O    | 집계 종료일 (YYYY-MM-DD) |
 
 **Response** `200 OK`
+
 ```json
 {
   "success": true,
@@ -948,7 +904,7 @@
   },
   "meta": { "traceId": "uuid" }
 }
-````
+```
 
 | 상황           | 코드        | 메시지                       |
 | -------------- | ----------- | ---------------------------- |
@@ -1485,11 +1441,136 @@
 
 ---
 
+# CONTRACTS API
+
+---
+
+## 13-1. 계약 생성
+
+**POST** `/contracts` | Bearer Token 필요
+
+**Request Body**
+
+```json
+{
+  "clientName": "(주)카카오",
+  "contractAmount": 5000000,
+  "expectedPaymentDate": "2026-06-10",
+  "taxType": "BUSINESS",
+  "memo": "카카오 프론트 개발 계약"
+}
+```
+
+| 필드                | 타입    | 필수 | 설명                    |
+| ------------------- | ------- | ---- | ----------------------- |
+| clientName          | String  | O    | 거래처명                |
+| contractAmount      | Decimal | O    | 계약 금액 (양수)        |
+| expectedPaymentDate | Date    | O    | 예상 입금일 (오늘 이후) |
+| taxType             | String  | O    | BUSINESS / ETC / ARTIST |
+| memo                | String  | X    | 메모                    |
+
+**taxType 세율**
+
+| 값       | 설명     | 세율 |
+| -------- | -------- | ---- |
+| BUSINESS | 사업소득 | 3.3% |
+| ETC      | 기타소득 | 3.3% |
+| ARTIST   | 예술인   | 3.3% |
+
+**Response** `201 Created`
+
+```json
+{
+  "success": true,
+  "data": {
+    "contractId": 1,
+    "contractAmount": 5000000,
+    "deductedAmount": 165000,
+    "actualIncome": 4835000
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
+---
+
+## 13-2. 계약 목록 조회
+
+**GET** `/contracts` | Bearer Token 필요
+
+**Query Parameters**
+
+| 이름 | 타입 | 필수 | 설명                                         |
+| ---- | ---- | ---- | -------------------------------------------- |
+| date | Date | X    | 조회 기준 월 (YYYY-MM-DD, 미입력 시 현재 월) |
+
+**Response** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "contractId": 1,
+      "clientName": "(주)카카오",
+      "contractAmount": 5000000,
+      "actualIncome": 4835000,
+      "expectedPaymentDate": "2026-06-10",
+      "contractStatus": "PENDING"
+    }
+  ],
+  "meta": { "traceId": "uuid" }
+}
+```
+
+**contractStatus 값**
+
+| 값        | 설명      |
+| --------- | --------- |
+| PENDING   | 대기      |
+| PAID      | 지급 완료 |
+| DELAYED   | 지연      |
+| CANCELLED | 취소      |
+
+---
+
+## 13-3. 계약 상세 조회
+
+**GET** `/contracts/{contractId}` | Bearer Token 필요
+
+**Response** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "contractId": 1,
+    "clientName": "(주)카카오",
+    "contractAmount": 5000000,
+    "taxRate": 0.033,
+    "deductedAmount": 165000,
+    "actualIncome": 4835000,
+    "taxType": "BUSINESS",
+    "expectedPaymentDate": "2026-06-10",
+    "actualPaymentDate": null,
+    "contractStatus": "PENDING",
+    "memo": "카카오 프론트 개발 계약"
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
+| 상황      | 코드         | 메시지                       |
+| --------- | ------------ | ---------------------------- |
+| 계약 없음 | CONTRACT_001 | 계약 정보를 찾을 수 없습니다 |
+
+---
+
 # VIRTUAL SALARY API
 
 ---
 
-## 13-1. 가상월급 조회
+## 14-1. 가상월급 설정 조회
 
 **GET** `/virtual-salary` | Bearer Token 필요
 
@@ -1499,9 +1580,13 @@
 {
   "success": true,
   "data": {
-    "monthlySalary": 3000000,
-    "savingRatio": 40,
-    "investmentRatio": 30
+    "targetSalary": 3000000,
+    "payday": 25,
+    "emergencyTargetAmount": 5000000,
+    "investmentRatio": 20.0,
+    "emergencyRatio": 30.0,
+    "priorityOrder": ["SALARY", "EMERGENCY", "INVESTMENT"],
+    "updatedAt": "2026-05-17T12:00:00"
   },
   "meta": { "traceId": "uuid" }
 }
@@ -1509,7 +1594,7 @@
 
 ---
 
-## 13-2. 가상월급 설정 저장
+## 14-2. 가상월급 설정 저장
 
 **POST** `/virtual-salary` | Bearer Token 필요
 
@@ -1517,19 +1602,23 @@
 
 ```json
 {
-  "monthlySalary": 3000000,
-  "savingRatio": 40,
-  "investmentRatio": 30
+  "targetSalary": 3000000,
+  "payday": 25,
+  "emergencyTargetAmount": 5000000,
+  "investmentRatio": 20,
+  "emergencyRatio": 30,
+  "priorityOrder": ["SALARY", "EMERGENCY", "INVESTMENT"]
 }
 ```
 
-| 필드            | 타입    | 필수 | 설명      |
-| --------------- | ------- | ---- | --------- |
-| monthlySalary   | Integer | O    | 월급 금액 |
-| savingRatio     | Integer | O    | 저축 비율 |
-| investmentRatio | Integer | O    | 투자 비율 |
-
-> **정책:** savingRatio + investmentRatio <= 100
+| 필드                  | 타입    | 필수 | 설명                                            |
+| --------------------- | ------- | ---- | ----------------------------------------------- |
+| targetSalary          | Decimal | O    | 목표 월급 (0 초과)                              |
+| payday                | Integer | O    | 월급일 (1~31)                                   |
+| emergencyTargetAmount | Decimal | X    | 비상금 목표 금액 (0 초과)                       |
+| investmentRatio       | Decimal | X    | 투자 비율 (0.00~100.00)                         |
+| emergencyRatio        | Decimal | X    | 비상금 비율 (0.00~100.00)                       |
+| priorityOrder         | Array   | X    | 분배 우선순위 (SALARY / EMERGENCY / INVESTMENT) |
 
 **Response** `201 Created`
 
@@ -1545,7 +1634,100 @@
 
 ---
 
-## 13-3. AI 추천 비율 조회
+## 14-3. 가상월급 설정 수정
+
+**PATCH** `/virtual-salary` | Bearer Token 필요
+
+**Request Body** — 14-2 저장과 동일 형식
+
+**Response** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "saved": true
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
+---
+
+## 14-4. 가상월급 대시보드 조회
+
+**GET** `/virtual-salary/dashboard` | Bearer Token 필요
+
+**Response** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "targetSalary": 3000000,
+    "currentBalance": 1200000,
+    "remainAmount": 1800000,
+    "usedAmount": 1200000,
+    "progressRate": 40.0,
+    "payday": 25,
+    "dday": 8
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
+| 필드           | 설명                 |
+| -------------- | -------------------- |
+| targetSalary   | 목표 월급            |
+| currentBalance | 현재 잔액            |
+| remainAmount   | 잔여 금액            |
+| usedAmount     | 사용 금액            |
+| progressRate   | 진행률 (%)           |
+| payday         | 월급일               |
+| dday           | 월급일까지 남은 일수 |
+
+---
+
+## 14-5. 가상월급 홈 요약 조회
+
+**GET** `/virtual-salary/summary` | Bearer Token 필요
+
+**Response** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "dashboard": {
+      "targetSalary": 3000000,
+      "currentBalance": 1200000,
+      "progressRate": 40.0,
+      "dday": 8
+    },
+    "monthlyExpectedIncome": 4835000,
+    "contracts": [
+      {
+        "contractId": 1,
+        "clientName": "(주)카카오",
+        "expectedPaymentDate": "2026-06-10",
+        "actualIncome": 4835000,
+        "contractStatus": "PENDING"
+      }
+    ],
+    "calendarData": [
+      {
+        "date": "2026-06-10",
+        "amount": 4835000
+      }
+    ]
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
+---
+
+## 14-6. AI 추천 비율 조회
 
 **GET** `/virtual-salary/recommendation` | Bearer Token 필요
 
@@ -1555,10 +1737,9 @@
 {
   "success": true,
   "data": {
-    "recommendedMonthlySalary": 2500000,
-    "recommendedSavingRatio": 50,
-    "recommendedInvestmentRatio": 30,
-    "reason": "최근 수입 안정성이 높아 투자 비중 확대를 추천합니다."
+    "recommendedEmergencyRatio": 30.0,
+    "recommendedInvestmentRatio": 20.0,
+    "summary": "현재 비상금이 목표 금액의 60% 수준으로 비상금 비율 확대를 추천합니다."
   },
   "meta": { "traceId": "uuid" }
 }
@@ -1570,7 +1751,7 @@
 
 ---
 
-## 14-1. 분배 설정
+## 15-1. 분배 설정
 
 **POST** `/distributions/settings` | Bearer Token 필요  
 **추가 헤더:** `Pin-Token: {pinToken}`, `Idempotency-Key: {uuid}`
@@ -1608,7 +1789,7 @@
 
 ---
 
-## 15-1. 실행 상태 조회
+## 16-1. 실행 상태 조회
 
 **GET** `/actions/{actionId}/status` | Bearer Token 필요
 
@@ -1629,7 +1810,7 @@
 
 ---
 
-## 15-2. Saga 상태 조회
+## 16-2. Saga 상태 조회
 
 **GET** `/actions/{actionId}/saga` | Bearer Token 필요
 
@@ -1661,7 +1842,7 @@
 
 ---
 
-## 15-3. 실패 원인 조회
+## 16-3. 실패 원인 조회
 
 **GET** `/actions/{actionId}/failure` | Bearer Token 필요
 
@@ -1683,7 +1864,7 @@
 
 ---
 
-## 15-4. 실행 이력 조회
+## 16-4. 실행 이력 조회
 
 **GET** `/actions/history` | Bearer Token 필요
 
@@ -1723,7 +1904,7 @@
 
 ---
 
-## 16-1. 사용자 목록 조회
+## 17-1. 사용자 목록 조회
 
 **GET** `/admin/users` | Bearer Token 필요 (ADMIN 권한)
 
@@ -1766,7 +1947,7 @@
 
 ---
 
-## 16-2. 사용자 상세 조회
+## 17-2. 사용자 상세 조회
 
 **GET** `/admin/users/{id}` | Bearer Token 필요 (ADMIN 권한)
 
@@ -1795,7 +1976,7 @@
 
 ---
 
-## 16-3. 사용자 상태 변경
+## 17-3. 사용자 상태 변경
 
 **PATCH** `/admin/users/{id}/status` | Bearer Token 필요 (ADMIN 권한)
 
@@ -1826,7 +2007,7 @@
 
 ---
 
-## 16-4. 로그인 로그 조회
+## 17-4. 로그인 로그 조회
 
 **GET** `/admin/logs/login` | Bearer Token 필요 (ADMIN 권한)
 
@@ -1870,7 +2051,7 @@
 
 ---
 
-## 16-5. AI 로그 조회
+## 17-5. AI 로그 조회
 
 **GET** `/admin/logs/ai` | Bearer Token 필요 (ADMIN 권한)
 
@@ -1914,7 +2095,7 @@
 
 ---
 
-## 16-6. 오류 로그 조회
+## 17-6. 오류 로그 조회
 
 **GET** `/admin/logs/error` | Bearer Token 필요 (ADMIN 권한)
 
@@ -1958,7 +2139,7 @@
 
 ---
 
-## 16-7. 오류 해결 처리
+## 17-7. 오류 해결 처리
 
 **PATCH** `/admin/logs/error/{id}` | Bearer Token 필요 (ADMIN 권한)
 
@@ -1992,7 +2173,7 @@
 
 ---
 
-## 16-8. API 로그 조회
+## 17-8. API 로그 조회
 
 **GET** `/admin/logs/api` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2035,7 +2216,7 @@
 
 ---
 
-## 16-9. 관리자 대시보드 조회
+## 17-9. 관리자 대시보드 조회
 
 **GET** `/admin/monitoring/dashboard` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2059,7 +2240,7 @@
 
 ---
 
-## 17-1. DLQ 이벤트 조회
+## 18-1. DLQ 이벤트 조회
 
 **GET** `/admin/events/dlq` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2084,7 +2265,7 @@
 
 ---
 
-## 17-2. DLQ 재처리
+## 18-2. DLQ 재처리
 
 **POST** `/admin/events/dlq/{eventId}/retry` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2105,7 +2286,7 @@
 
 ---
 
-## 17-3. Outbox 조회
+## 18-3. Outbox 조회
 
 **GET** `/admin/events/outbox` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2130,7 +2311,7 @@
 
 ---
 
-## 17-4. Saga 목록 조회
+## 18-4. Saga 목록 조회
 
 **GET** `/admin/events/sagas` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2155,7 +2336,7 @@
 
 ---
 
-## 17-5. Saga 상세 조회
+## 18-5. Saga 상세 조회
 
 **GET** `/admin/events/sagas/{sagaId}` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2188,7 +2369,7 @@
 
 ---
 
-## 17-6. Saga 보상 처리
+## 18-6. Saga 보상 처리
 
 **POST** `/admin/events/sagas/{sagaId}/compensate` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2209,7 +2390,7 @@
 
 ---
 
-## 17-7. 정합성 검증 조회
+## 18-7. 정합성 검증 조회
 
 **GET** `/admin/events/reconciliation` | Bearer Token 필요 (ADMIN 권한)
 
@@ -2231,7 +2412,7 @@
 
 ---
 
-## 17-8. 정합성 검증 실행
+## 18-8. 정합성 검증 실행
 
 **POST** `/admin/events/reconciliation/run` | Bearer Token 필요 (ADMIN 권한)
 
