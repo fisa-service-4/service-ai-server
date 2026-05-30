@@ -26,8 +26,13 @@ def transfer_extract_node(state: ChatAgentState) -> dict:
     )
 
     try:
-        extracted = json.loads(response.choices[0].message.content)
-    except json.JSONDecodeError:
+        raw = response.choices[0].message.content.strip()
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        extracted = json.loads(raw.strip())
+    except (json.JSONDecodeError, IndexError):
         extracted = {"missing": ["파싱 오류"], "question": "다시 말씀해 주시겠어요?"}
 
     question = extracted.get("question")
