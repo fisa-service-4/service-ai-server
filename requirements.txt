@@ -2,16 +2,11 @@ fastapi
 uvicorn
 langchain
 langgraph
-langchain-openai
 openai
 asyncpg
 psycopg2-binary
 python-dotenv
 pydantic
 httpx
-<<<<<<< Updated upstream
 PyJWT
 google-genai
-=======
-PyJWT
->>>>>>> Stashed changes
