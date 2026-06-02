@@ -12,7 +12,9 @@ async def verifier_node(state: ChatAgentState) -> dict:
     # interrupt() 호출 → 그래프 일시정지, resume 시 입력값 반환
     pin = interrupt("PIN을 입력해 주세요.")
 
+    logger.info("[Verifier] interrupt resume 값: type=%s repr=%s", type(pin).__name__, repr(pin))
     pin_str = str(pin).strip() if pin else ""
+    logger.info("[Verifier] pin_str=%s", pin_str)
     token = state.get("token")
     intent = state.get("intent")
 
