@@ -7,16 +7,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
  && rm -rf /var/lib/apt/lists/*
 
-<<<<<<< Updated upstream
-RUN pip install --no-cache-dir \
-=======
 COPY requirements.txt .
 
 RUN pip install --upgrade pip
 
 RUN pip install \
     --no-cache-dir \
->>>>>>> Stashed changes
     --prefix=/install \
     -r requirements.txt
 
