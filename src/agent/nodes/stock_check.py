@@ -23,6 +23,7 @@ async def stock_check_node(state: ChatAgentState) -> dict:
             except Exception as e:
                 logger.error("[StockCheck] 종목 검색 실패: %s", e)
 
+        logger.info("[StockCheck] 현재가 조회 시작: stock_code=%s", stock_code)
         try:
             price_data = await get_stock_price(stock_code, token=token) if stock_code else {}
             logger.info("[StockCheck] 현재가 조회 결과: %s", price_data)
@@ -50,22 +51,29 @@ async def stock_check_node(state: ChatAgentState) -> dict:
         }
 
     try:
+        if not stock_code and stock_name:
+            results = await search_stock(stock_name, token=token)
+            if results:
+                stock_code = results[0].get("stockCode")
+                stock_info = {**stock_info, "code": stock_code}
+                logger.info("[StockCheck] 주문용 코드 검색: %s → %s", stock_name, stock_code)
+
         price_data = await get_stock_price(stock_code, token=token) if stock_code else {}
-        balance_data = await get_securities_balance(token=token)
+        balance_data = await get_securities_balance(account_id=1, token=token)
         accounts = await get_stocks_accounts(token=token)
-        account_id = accounts[0]["accountId"] if accounts else None
+        account_id = accounts[0]["accountId"] if accounts else 1
     except Exception as e:
         logger.error("[StockCheck] 주문 정보 조회 실패: %s", e)
         price_data = {}
         balance_data = {}
-        account_id = None
+        account_id = 1
 
     current_price = price_data.get("currentPrice")
     stock_name = price_data.get("stockName") or stock_info.get("name") or stock_code
     order_type_str = "매수" if stock_info.get("order_type") == "BUY" else "매도"
     quantity = stock_info.get("quantity")
-    price_type = stock_info.get("price_type", "MARKET")
-    method_str = "시장가" if price_type == "MARKET" else f"지정가 {stock_info.get('price', 0):,}원"
+    price_type = stock_info.get("price_type") or "MARKET"
+    method_str = "시장가" if price_type == "MARKET" else f"지정가 {stock_info.get('price') or 0:,}원"
 
     confirm_msg = f"{stock_name} {quantity}주를 {method_str}로 {order_type_str}하시겠습니까?"
     if current_price:

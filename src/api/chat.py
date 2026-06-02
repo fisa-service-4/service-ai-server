@@ -28,11 +28,17 @@ class CreateSessionRequest(BaseModel):
 class SendMessageRequest(BaseModel):
     sessionId: int
     message: str
+    isPin: bool = False
+
+
+import logging as _logging
+_auth_log = _logging.getLogger(__name__)
 
 
 def _extract_user_id(credentials: HTTPAuthorizationCredentials) -> str:
     try:
-        payload = jwt.decode(credentials.credentials, options={"verify_signature": False}, algorithms=["HS256"])
+        payload = jwt.decode(credentials.credentials, options={"verify_signature": False}, algorithms=["HS256", "RS256"])
+        _auth_log.info("[Auth] token payload=%s", payload)
         return str(payload["sub"])
     except Exception:
         raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
@@ -68,7 +74,8 @@ async def send_message(
     if not session:
         raise HTTPException(status_code=404, detail="세션을 찾을 수 없습니다.")
 
-    session["messages"].append({"role": "user", "content": body.message})
+    if not body.isPin:
+        session["messages"].append({"role": "user", "content": body.message})
 
     config = {"configurable": {"thread_id": str(body.sessionId)}}
     initial_state = {
@@ -91,50 +98,61 @@ async def send_message(
 
     try:
         if is_interrupted:
-            # PIN 입력값을 resume 값으로 전달
             result = await chat_graph.ainvoke(Command(resume=body.message), config=config)
         else:
             result = await chat_graph.ainvoke(initial_state, config=config)
+    except BaseException as e:
+        if not (_GraphInterrupt and isinstance(e, _GraphInterrupt)):
+            _log.exception("chat_graph 실행 오류: %s", e)
+            return fail("AI_001", "AI 응답 생성에 실패했습니다.")
+        result = None
 
-        ai_messages = [m for m in result.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
-        ai_content = ai_messages[-1]["content"] if ai_messages else "처리가 완료되었습니다."
-        intent = result.get("intent", "UNKNOWN")
-        action_required = bool(result.get("pending_action"))
+    # ainvoke 이후 snapshot으로 interrupt 여부 판단
+    caught_interrupt = result is None  # GraphInterrupt exception으로 감지된 경우
+    try:
+        post_snapshot = chat_graph.get_state(config)
+        snapshot_next = post_snapshot.next if post_snapshot else ()
+        snapshot_interrupts = getattr(post_snapshot, "interrupts", ()) if post_snapshot else ()
+        now_interrupted = caught_interrupt or bool(snapshot_next) or bool(snapshot_interrupts)
+        sv = post_snapshot.values if post_snapshot else {}
+        _log.info("[Chat] caught_interrupt=%s next=%s interrupts=%s now_interrupted=%s",
+                  caught_interrupt, snapshot_next, snapshot_interrupts, now_interrupted)
+    except Exception:
+        now_interrupted = caught_interrupt
+        sv = result or {}
 
+    if now_interrupted:
+        ai_msgs = [m for m in sv.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
+        ai_content = ai_msgs[-1]["content"] if ai_msgs else "PIN을 입력해 주세요."
+        intent = sv.get("intent", "STOCK")
         session["messages"].append({"role": "assistant", "content": ai_content})
-
-        global _message_counter
         _message_counter += 1
-
         return ok({
             "messageId": _message_counter,
             "role": "AI",
             "intent": intent,
             "content": ai_content,
-            "actionRequired": action_required,
+            "actionRequired": True,
+            "requirePin": True,
         })
-    except BaseException as e:
-        if _GraphInterrupt and isinstance(e, _GraphInterrupt):
-            try:
-                snapshot = chat_graph.get_state(config)
-                sv = snapshot.values if snapshot else {}
-                ai_msgs = [m for m in sv.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
-                ai_content = ai_msgs[-1]["content"] if ai_msgs else "추가 확인이 필요합니다."
-                intent = sv.get("intent", "ASSET")
-                session["messages"].append({"role": "assistant", "content": ai_content})
-                _message_counter += 1
-                return ok({
-                    "messageId": _message_counter,
-                    "role": "AI",
-                    "intent": intent,
-                    "content": ai_content,
-                    "actionRequired": True,
-                })
-            except Exception:
-                _log.exception("GraphInterrupt 상태 복구 실패")
 
-        _log.exception("chat_graph 실행 오류: %s", e)
-        return fail("AI_001", "AI 응답 생성에 실패했습니다.")
+    messages_source = result if result is not None else sv
+    ai_messages = [m for m in messages_source.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
+    ai_content = ai_messages[-1]["content"] if ai_messages else "처리가 완료되었습니다."
+    intent = messages_source.get("intent", "UNKNOWN")
+    action_required = bool(messages_source.get("pending_action"))
+
+    session["messages"].append({"role": "assistant", "content": ai_content})
+
+    _message_counter += 1
+
+    return ok({
+        "messageId": _message_counter,
+        "role": "AI",
+        "intent": intent,
+        "content": ai_content,
+        "actionRequired": action_required,
+    })
 
 
 @router.delete("/sessions/{session_id}")
