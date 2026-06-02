@@ -1,0 +1,23 @@
+PROFILE=app
+
+BACKEND_URL=http://service-backend:8080
+
+LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+LLM_MODEL=gemini-2.5-flash
+LLM_API_KEY=AIzaSyCl7ZMS2P5aF4KIbZmPdto1SAReUFZN2Sg
+EMBEDDING_MODEL=bge-m3
+
+# 분석/벡터 모두 단일 PostgreSQL의 스키마로 분리됨
+ANALYTICS_DB_HOST=postgres
+ANALYTICS_DB_PORT=5432
+ANALYTICS_DB_NAME=finance
+ANALYTICS_DB_SCHEMA=analytics
+ANALYTICS_DB_USER=admin
+ANALYTICS_DB_PASSWORD=1234
+
+VECTOR_DB_HOST=postgres
+VECTOR_DB_PORT=5432
+VECTOR_DB_NAME=finance
+VECTOR_DB_SCHEMA=vector
+VECTOR_DB_USER=admin
+VECTOR_DB_PASSWORD=1234

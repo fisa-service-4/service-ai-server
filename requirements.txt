@@ -9,5 +9,9 @@ psycopg2-binary
 python-dotenv
 pydantic
 httpx
+<<<<<<< Updated upstream
 PyJWT
 google-genai
+=======
+PyJWT
+>>>>>>> Stashed changes

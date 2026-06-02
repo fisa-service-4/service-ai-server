@@ -2,26 +2,34 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-COPY requirements.txt .
-
-# 💡 gcc 및 빌드에 필요한 패키지 설치 추가
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
-    && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/*
 
+<<<<<<< Updated upstream
 RUN pip install --no-cache-dir \
+=======
+COPY requirements.txt .
+
+RUN pip install --upgrade pip
+
+RUN pip install \
+    --no-cache-dir \
+>>>>>>> Stashed changes
     --prefix=/install \
     -r requirements.txt
-
-COPY . .
 
 FROM python:3.11-slim
 
 WORKDIR /app
 
+ENV PYTHONUNBUFFERED=1
+
 COPY --from=builder /install /usr/local
-COPY --from=builder /app .
+
+COPY src ./src
+COPY requirements.txt .
 
 EXPOSE 8000
 
