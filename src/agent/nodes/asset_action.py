@@ -1,5 +1,7 @@
+import json
+
 from src.agent.state import ChatAgentState
-from src.agent.llm import client, MODEL
+from src.pipeline.db import get_analytics_pool
 
 _RECOMMEND_KEYWORDS = [
     "분배 추천", "배분 추천", "추천해줘", "추천해", "어떻게 나눠", "어떻게 배분",
@@ -10,16 +12,10 @@ _APPLY_KEYWORDS = [
     "적용해줘", "적용해", "설정해줘", "설정해", "그대로 해줘", "반영해줘",
 ]
 
-_SYSTEM_PROMPT = """사용자의 자산 분석 데이터를 바탕으로 월 가상월급, 비상금 이체액, 투자 이체액을 금액으로 추천하세요.
-비율이 아닌 구체적인 금액(원 단위)으로 추천하고 간단한 이유를 설명하세요.
-한국어로 답변하세요. 답변은 3~5문장 이내로 간결하게 작성하세요.
-마지막에 반드시 "적용하시겠습니까?" 라고 물어보세요."""
 
-
-def asset_action_node(state: ChatAgentState) -> dict:
+async def asset_action_node(state: ChatAgentState) -> dict:
     analysis_data = state.get("analysis_data", {})
     intent = state.get("intent", "")
-    rag_context = state.get("rag_context", "")
 
     if not analysis_data or intent != "ASSET":
         return {"pending_action": {}}
@@ -36,37 +32,58 @@ def asset_action_node(state: ChatAgentState) -> dict:
     if not is_recommend and not is_apply:
         return {"pending_action": {}}
 
-    # 적용 요청: 이전 추천이 있으면 pending_action만 set
+    user_id = int(state.get("user_id") or 1)
+
     if is_apply:
-        prev_recommendation = ""
-        for msg in reversed(state["messages"]):
-            if msg.get("role") == "assistant" and "적용하시겠습니까?" in msg.get("content", ""):
-                prev_recommendation = msg["content"]
-                break
-
         income = analysis_data.get("monthly_income", {}).get("total_income", 0)
-        pending_action = {
-            "type": "DISTRIBUTION",
-            "incomeAmount": int(income),
+        return {
+            "pending_action": {
+                "type": "DISTRIBUTION",
+                "incomeAmount": int(income),
+            }
         }
-        return {"pending_action": pending_action}
 
-    # 추천 요청: LLM으로 금액 추천 생성, pending_action 없음
-    context = f"분석 데이터: {analysis_data}\n참고 정보: {rag_context}" if rag_context else f"분석 데이터: {analysis_data}"
+    # 추천 요청: DB에서 추천 데이터 조회
+    try:
+        pool = await get_analytics_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT ON (recommendation_type)
+                    recommendation_type, recommendation_content
+                FROM analysis_ai_recommendation
+                WHERE user_id = $1
+                ORDER BY recommendation_type, created_at DESC
+                """,
+                user_id,
+            )
+    except Exception:
+        return {"pending_action": {}}
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": context},
-        ],
-        temperature=0.7,
+    if not rows:
+        msg = "아직 분석 데이터가 없어요. 잠시 후 다시 시도해주세요."
+        return {
+            "pending_action": {},
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+        }
+
+    recs = {row["recommendation_type"]: json.loads(row["recommendation_content"]) for row in rows}
+
+    salary = int(recs.get("SALARY", {}).get("value") or 0)
+    emergency = int(recs.get("EMERGENCY", {}).get("value") or 0)
+    investment = int(recs.get("INVESTMENT", {}).get("value") or 0)
+    salary_summary = recs.get("SALARY", {}).get("summary", "")
+    emergency_summary = recs.get("EMERGENCY", {}).get("summary", "")
+
+    recommendation = (
+        f"월 가상월급은 **{salary:,}원**, "
+        f"비상금 이체액은 **{emergency:,}원**, "
+        f"투자 이체액은 **{investment:,}원**으로 추천합니다.\n"
+        f"{salary_summary} {emergency_summary}\n\n"
+        f"적용하시겠습니까?"
     )
-
-    recommendation = response.choices[0].message.content or ""
-    updated_messages = state["messages"] + [{"role": "assistant", "content": recommendation}]
 
     return {
         "pending_action": {},
-        "messages": updated_messages,
+        "messages": state["messages"] + [{"role": "assistant", "content": recommendation}],
     }
