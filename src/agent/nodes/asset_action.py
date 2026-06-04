@@ -66,7 +66,8 @@ async def asset_action_node(state: ChatAgentState) -> dict:
                 "targetSalary": int(recs.get("SALARY", {}).get("value") or 0),
                 "investmentAmount": int(recs.get("INVESTMENT", {}).get("value") or 0),
                 "emergencyAmount": int(recs.get("EMERGENCY", {}).get("value") or 0),
-            }
+            },
+            "messages": state["messages"] + [{"role": "assistant", "content": "PIN을 입력해 주세요."}],
         }
 
     # 추천 요청: DB에서 추천 데이터 조회

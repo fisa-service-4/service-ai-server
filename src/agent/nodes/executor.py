@@ -36,7 +36,18 @@ async def executor_node(state: ChatAgentState) -> dict:
         else:
             result = {}
 
-        message = "실행이 완료되었습니다."
+        if intent == "ASSET" and pending_action.get("type") == "VIRTUAL_SALARY":
+            salary = pending_action.get("targetSalary", 0)
+            investment = pending_action.get("investmentAmount", 0)
+            emergency = pending_action.get("emergencyAmount", 0)
+            message = (
+                f"가상월급 설정이 적용되었습니다.\n"
+                f"• 가상월급: {salary:,}원\n"
+                f"• 투자 이체액: {investment:,}원\n"
+                f"• 비상금 이체액: {emergency:,}원"
+            )
+        else:
+            message = "실행이 완료되었습니다."
     except Exception:
         result = {}
         message = "실행 중 오류가 발생했습니다."
