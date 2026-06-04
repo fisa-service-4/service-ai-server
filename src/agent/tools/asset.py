@@ -1,4 +1,4 @@
-from src.agent.tools.client import get, patch, post
+from src.agent.tools.client import get, post
 from src.pipeline.db import get_analytics_pool
 
 
@@ -36,5 +36,5 @@ async def get_salary_recommendation(token: str | None = None) -> dict:
 
 
 async def update_salary_setting(body: dict, token: str | None = None) -> dict:
-    result = await patch("/api/v1/virtual-salary", token=token, body=body)
+    result = await post("/api/v1/virtual-salary", token=token, body=body)
     return result.get("data", {})

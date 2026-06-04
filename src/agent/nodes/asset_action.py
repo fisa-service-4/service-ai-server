@@ -35,11 +35,37 @@ async def asset_action_node(state: ChatAgentState) -> dict:
     user_id = int(state.get("user_id") or 1)
 
     if is_apply:
-        income = analysis_data.get("monthly_income", {}).get("total_income", 0)
+        try:
+            pool = await get_analytics_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT DISTINCT ON (recommendation_type)
+                        recommendation_type, recommendation_content
+                    FROM analysis_ai_recommendation
+                    WHERE user_id = $1
+                    ORDER BY recommendation_type, created_at DESC
+                    """,
+                    user_id,
+                )
+        except Exception:
+            return {"pending_action": {}}
+
+        if not rows:
+            msg = "아직 분석 데이터가 없어요. 잠시 후 다시 시도해주세요."
+            return {
+                "pending_action": {},
+                "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+            }
+
+        recs = {row["recommendation_type"]: json.loads(row["recommendation_content"]) for row in rows}
+
         return {
             "pending_action": {
-                "type": "DISTRIBUTION",
-                "incomeAmount": int(income),
+                "type": "VIRTUAL_SALARY",
+                "targetSalary": int(recs.get("SALARY", {}).get("value") or 0),
+                "investmentAmount": int(recs.get("INVESTMENT", {}).get("value") or 0),
+                "emergencyAmount": int(recs.get("EMERGENCY", {}).get("value") or 0),
             }
         }
 
