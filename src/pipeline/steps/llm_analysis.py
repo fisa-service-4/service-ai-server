@@ -53,6 +53,7 @@ def _build_prompt(income_rows: list, expense_rows: list) -> str:
     ])
 
     avg_income = sum(float(r["total_income"]) for r in income_rows) / len(income_rows)
+    min_income = min(float(r["total_income"]) for r in income_rows)
 
     return f"""당신은 프리랜서 전문 AI 금융 어드바이저입니다.
 아래 월별 수입/지출 데이터를 분석하고 JSON 형식으로만 응답하세요.
@@ -65,6 +66,9 @@ def _build_prompt(income_rows: list, expense_rows: list) -> str:
 
 [평균 월 수입]
 {int(avg_income):,}원
+
+[최저 월 수입]
+{int(min_income):,}원
 
 다음 JSON 형식으로 응답하세요. 다른 텍스트는 절대 포함하지 마세요:
 {{
@@ -82,17 +86,17 @@ def _build_prompt(income_rows: list, expense_rows: list) -> str:
   "recommendations": [
     {{"type": "CONSUMPTION", "summary": "소비 패턴 요약 및 조언 1~2문장", "value": null}},
     {{"type": "SALARY",      "summary": "가상월급 추천 이유 1문장",        "value": "2500000"}},
-    {{"type": "INVESTMENT",  "summary": "투자 배분 추천 이유 1문장",       "value": "60"}},
-    {{"type": "EMERGENCY",   "summary": "비상금 배분 추천 이유 1문장",     "value": "40"}}
+    {{"type": "INVESTMENT",  "summary": "투자 월 이체액 추천 이유 1문장",  "value": "300000"}},
+    {{"type": "EMERGENCY",   "summary": "비상금 월 이체액 추천 이유 1문장","value": "500000"}}
   ]
 }}
 
 추천 기준:
 - CONSUMPTION: 소비 패턴 요약, value는 null
-- SALARY: summary는 추천 이유, value는 권장 가상월급 금액 (원 단위 정수 문자열)
-- INVESTMENT: summary는 추천 이유, value는 (수입 - 가상월급) 잔액 중 투자 비율 (0~100 정수 문자열)
-- EMERGENCY: summary는 추천 이유, value는 (수입 - 가상월급) 잔액 중 비상금 비율 (0~100 정수 문자열)
-- INVESTMENT + EMERGENCY 합계는 반드시 100이어야 함
+- SALARY: 최저 월 수입의 80~90% 수준으로 보수적 설정, value는 원 단위 정수 문자열
+- EMERGENCY: 가상월급의 15~25% 수준 월 이체액, value는 원 단위 정수 문자열
+- INVESTMENT: 가상월급의 10~20% 수준 월 이체액, value는 원 단위 정수 문자열
+- EMERGENCY + INVESTMENT 합계가 SALARY value를 초과하지 않도록 설정
 - risk_score: 0~10 (높을수록 과소비 위험)
 - fixed_expense_ratio: 고정지출(주거+통신+구독) 비율 (0~100)
 - impulsive_expense_ratio: 충동소비(쇼핑) 비율 (0~100)

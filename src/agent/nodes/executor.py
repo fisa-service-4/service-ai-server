@@ -27,7 +27,10 @@ async def executor_node(state: ChatAgentState) -> dict:
             }, token=token)
 
         elif intent == "ASSET" and pending_action.get("type") == "DISTRIBUTION":
-            result = await set_distribution(pending_action, token=token)
+            result = await set_distribution({
+                "incomeAmount": pending_action.get("incomeAmount", 0),
+                "confirmed": True,
+            }, token=token)
 
         else:
             result = {}
