@@ -97,8 +97,8 @@ async def recommend_virtual_salary(request: RecommendationRequest):
 
         return ok({
             "recommendedTargetSalary": safe_int(salary_rec.get("value")),
-            "recommendedEmergencyTransfer": safe_int(emergency_rec.get("value")),
-            "recommendedInvestmentTransfer": safe_int(investment_rec.get("value")),
+            "recommendedEmergencyAmount": safe_int(emergency_rec.get("value")),
+            "recommendedInvestmentAmount": safe_int(investment_rec.get("value")),
             "summary": " ".join(summaries),
         })
 
