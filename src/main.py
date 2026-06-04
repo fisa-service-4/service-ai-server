@@ -87,12 +87,18 @@ async def recommend_virtual_salary(request: RecommendationRequest):
         emergency_rec = recs.get("EMERGENCY", {})
         investment_rec = recs.get("INVESTMENT", {})
 
+        def safe_int(val):
+            try:
+                return int(val) if val is not None else None
+            except (ValueError, TypeError):
+                return None
+
         summaries = [s for s in [salary_rec.get("summary"), emergency_rec.get("summary")] if s]
 
         return ok({
-            "recommendedTargetSalary": salary_rec.get("value"),
-            "recommendedEmergencyTransfer": emergency_rec.get("value"),
-            "recommendedInvestmentTransfer": investment_rec.get("value"),
+            "recommendedTargetSalary": safe_int(salary_rec.get("value")),
+            "recommendedEmergencyTransfer": safe_int(emergency_rec.get("value")),
+            "recommendedInvestmentTransfer": safe_int(investment_rec.get("value")),
             "summary": " ".join(summaries),
         })
 
