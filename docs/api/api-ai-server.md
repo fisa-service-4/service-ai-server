@@ -169,6 +169,23 @@
 
 ## 1-5. 채팅 세션 종료
 
+**DELETE** `/chat/sessions/{sessionId}` | Bearer Token 필요
+
+**Request Body** 없음
+
+**Response** `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "sessionId": 1,
+    "status": "CLOSED"
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
 ---
 
 ## 2-1. AI 분배 추천 조회
@@ -194,8 +211,8 @@
   "success": true,
   "data": {
     "recommendedTargetSalary": 2200000,
-    "recommendedEmergencyTransfer": 450000,
-    "recommendedInvestmentTransfer": 300000,
+    "recommendedEmergencyAmount": 450000,
+    "recommendedInvestmentAmount": 300000,
     "summary": "최저 수입 기준 가상월급 설정을 권장합니다."
   },
   "meta": { "traceId": "uuid" }
@@ -205,24 +222,3 @@
 | 상황             | 코드   | 메시지                                                 |
 | ---------------- | ------ | ------------------------------------------------------ |
 | 추천 데이터 없음 | AI_001 | 추천 데이터가 없습니다. 파이프라인을 먼저 실행해주세요 |
-
----
-
-## 1-5. 채팅 세션 종료
-
-**DELETE** `/chat/sessions/{sessionId}` | Bearer Token 필요
-
-**Request Body** 없음
-
-**Response** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": {
-    "sessionId": 1,
-    "status": "CLOSED"
-  },
-  "meta": { "traceId": "uuid" }
-}
-```
