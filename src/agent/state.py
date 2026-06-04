@@ -33,7 +33,8 @@ class ChatAgentState(TypedDict):
 
     # 이체
     from_account_id: str
-    to_account_id: str
+    to_bank_code: str
+    to_account_number: str
     amount: int
     description: str
     transfer_info_complete: bool
