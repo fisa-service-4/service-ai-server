@@ -1,7 +1,7 @@
 from src.agent.state import ChatAgentState
 from src.agent.tools.stock import execute_buy_order, execute_sell_order
 from src.agent.tools.transfer import execute_transfer
-from src.agent.tools.distribution import set_distribution
+from src.agent.tools.asset import update_salary_setting
 
 
 async def executor_node(state: ChatAgentState) -> dict:
@@ -26,10 +26,11 @@ async def executor_node(state: ChatAgentState) -> dict:
                 "description": state.get("description"),
             }, token=token)
 
-        elif intent == "ASSET" and pending_action.get("type") == "DISTRIBUTION":
-            result = await set_distribution({
-                "incomeAmount": pending_action.get("incomeAmount", 0),
-                "confirmed": True,
+        elif intent == "ASSET" and pending_action.get("type") == "VIRTUAL_SALARY":
+            result = await update_salary_setting({
+                "targetSalary": pending_action.get("targetSalary"),
+                "investmentAmount": pending_action.get("investmentAmount"),
+                "emergencyAmount": pending_action.get("emergencyAmount"),
             }, token=token)
 
         else:
