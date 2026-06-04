@@ -306,6 +306,51 @@
 
 ---
 
+## BANK-ACCOUNT-006. 계좌 유효성 검증
+
+**POST** `/accounts/validate`
+
+> transaction-server가 이체 실행 전 입금 대상 계좌의 존재 여부와 활성 상태를 검증하는 API
+> X-User-Id 불필요 — 입금 대상 계좌 조회이므로 소유권 검증 없음
+
+### Request Body
+
+```json
+{
+  "toBankCode": "088",
+  "toAccountNumber": "110-111-000074"
+}
+```
+
+| 필드            | 타입   | 필수 | 설명        |
+| --------------- | ------ | ---- | ----------- |
+| toBankCode      | String | O    | 입금 은행 코드  |
+| toAccountNumber | String | O    | 입금 계좌번호   |
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "validYn": true,
+    "status": "ACTIVE"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+### Error Cases
+
+| 상황            | 코드        | 메시지                       |
+| --------------- | ----------- | ---------------------------- |
+| 계좌 없음       | ACCOUNT_001 | 계좌가 존재하지 않습니다     |
+| LOCKED / CLOSED / DORMANT | ACCOUNT_003 | 비활성 계좌입니다 |
+
+---
+
 ## BANK-TRANSFER-001. 이체 실행
 
 **POST** `/transfers`
@@ -379,6 +424,7 @@
 
 > Saga 기반 분산 트랜잭션 Commit 단계 수행 API
 > 출금/입금 반영 및 최종 상태 확정 처리
+> **멱등 보장:** 이미 SUCCESS 상태인 경우 재처리 없이 SUCCESS 응답 반환 (Saga orchestrator 재시도 안전)
 
 ### Response `200 OK`
 
@@ -395,3 +441,53 @@
   }
 }
 ```
+
+---
+
+## BANK-TRANSFER-004. 이체 취소
+
+**POST** `/transfers/{transferId}/cancel`
+
+> Saga 보상 트랜잭션 API
+> Saga 실패 시 approve 이전 상태(REQUESTED / PROCESSING)의 Transfer를 명시적으로 CANCELLED로 전이
+> 실제 잔액 변동 없음 — 상태 전이만 수행
+> **멱등 보장:** 이미 CANCELLED 상태인 경우 재처리 없이 CANCELLED 응답 반환 (Saga orchestrator 재시도 안전)
+
+### 취소 가능 상태
+
+| 현재 상태   | 결과          | 비고                                                    |
+| ----------- | ------------- | ------------------------------------------------------- |
+| REQUESTED   | CANCELLED     | 취소 가능                                               |
+| PROCESSING  | CANCELLED     | 취소 가능 (approve 이전이므로 잔액 변동 없음)           |
+| CANCELLED   | CANCELLED     | 멱등 응답 반환 (Saga orchestrator 타임아웃 재시도 안전) |
+| SUCCESS     | 예외 반환     | TRANSFER_003                                            |
+| FAILED      | 예외 반환     | TRANSFER_003                                            |
+
+### Request Body
+
+없음
+
+### Response `200 OK`
+
+```json
+{
+  "success": true,
+  "data": {
+    "transferId": 5001,
+    "transferStatus": "CANCELLED",
+    "cancelledAt": "2026-05-18T10:30:10"
+  },
+  "meta": {
+    "traceId": "uuid"
+  }
+}
+```
+
+### Error Cases
+
+| 상황                                      | 코드         | 메시지                          |
+| ----------------------------------------- | ------------ | ------------------------------- |
+| 이체 건 없음                              | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
+| 접근 불가                                 | TRANSFER_004 | 본인 이체 건이 아닙니다         |
+| 취소 불가 상태 (SUCCESS / FAILED / CANCELLED) | TRANSFER_003 | 이미 처리 완료된 이체입니다     |
+
