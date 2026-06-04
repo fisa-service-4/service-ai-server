@@ -37,9 +37,9 @@ async def executor_node(state: ChatAgentState) -> dict:
             result = {}
 
         if intent == "ASSET" and pending_action.get("type") == "VIRTUAL_SALARY":
-            salary = pending_action.get("targetSalary", 0)
-            investment = pending_action.get("investmentAmount", 0)
-            emergency = pending_action.get("emergencyAmount", 0)
+            salary = pending_action.get("targetSalary") or 0
+            investment = pending_action.get("investmentAmount") or 0
+            emergency = pending_action.get("emergencyAmount") or 0
             message = (
                 f"가상월급 설정이 적용되었습니다.\n"
                 f"• 가상월급: {salary:,}원\n"
