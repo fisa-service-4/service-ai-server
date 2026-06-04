@@ -103,10 +103,11 @@ async def asset_action_node(state: ChatAgentState) -> dict:
     emergency_summary = recs.get("EMERGENCY", {}).get("summary", "")
 
     recommendation = (
-        f"월 가상월급은 **{salary:,}원**, "
-        f"비상금 이체액은 **{emergency:,}원**, "
-        f"투자 이체액은 **{investment:,}원**으로 추천합니다.\n"
-        f"{salary_summary} {emergency_summary}\n\n"
+        f"💰 AI 분배 추천\n"
+        f"• 가상월급: {salary:,}원\n"
+        f"• 투자 이체액: {investment:,}원\n"
+        f"• 비상금 이체액: {emergency:,}원\n\n"
+        f"{salary_summary}\n\n"
         f"적용하시겠습니까?"
     )
 
