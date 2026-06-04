@@ -4,7 +4,7 @@ from src.agent.llm import client, MODEL
 
 _SYSTEM_PROMPT = """You are a financial assistant router.
 Classify the user's message into one of these intents:
-- ASSET: questions about assets, spending analysis, consumption patterns, financial advice, distribution settings
+- ASSET: questions about assets, spending analysis, consumption patterns, financial advice, distribution settings, applying or confirming recommendations (적용, 설정 적용, 반영, 그대로 해줘)
 - STOCK: buying or selling stocks, stock prices, portfolio inquiries
 - TRANSFER: money transfers between accounts
 - UNKNOWN: anything else
