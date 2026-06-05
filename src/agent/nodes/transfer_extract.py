@@ -3,7 +3,7 @@ import json
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
 
-_SYSTEM_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
+_BASE_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
 다음 JSON 형식으로만 응답하세요:
 {
   "from_account_id": "출금 계좌 ID (숫자, 없으면 null)",
@@ -19,10 +19,22 @@ _SYSTEM_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세�
 
 
 def transfer_extract_node(state: ChatAgentState) -> dict:
+    # 계좌 목록이 있으면 프롬프트에 컨텍스트 추가 (ID는 내부용, 사용자에게 미노출)
+    accounts = state.get("realtime_data", {}).get("accounts", [])
+    system_prompt = _BASE_PROMPT
+    if accounts:
+        account_lines = ["\n[사용자 보유 계좌 목록 - from_account_id 매핑 참고용]"]
+        for i, acc in enumerate(accounts, start=1):
+            account_lines.append(
+                f"{i}번: {acc.get('accountName', '계좌')} "
+                f"({acc.get('accountNumber', '')}) → accountId: {acc.get('accountId')}"
+            )
+        system_prompt += "\n".join(account_lines)
+
     response = client.chat.completions.create(
         model=MODEL,
         messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             *state["messages"],
         ],
         temperature=0,
