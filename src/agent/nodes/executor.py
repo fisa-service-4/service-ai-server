@@ -40,10 +40,10 @@ async def executor_node(state: ChatAgentState) -> dict:
             stock_info = state.get("stock_info", {})
             order_type = "매수" if stock_info.get("order_type") == "BUY" else "매도"
             name = stock_info.get("name", "")
-            quantity = stock_info.get("quantity", 0)
+            quantity = stock_info.get("quantity") or 0
             price = stock_info.get("current_price") or stock_info.get("price")
             price_type = stock_info.get("price_type", "MARKET")
-            price_str = f"{int(price):,}원" if price else ("시장가" if price_type == "MARKET" else "-")
+            price_str = f"{int(price):,}원" if price is not None else ("시장가" if price_type == "MARKET" else "-")
             message = (
                 f"✅ 주문 완료\n"
                 f"• 종목: {name}\n"
