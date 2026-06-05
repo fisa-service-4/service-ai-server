@@ -59,9 +59,9 @@ async def stock_check_node(state: ChatAgentState) -> dict:
                 logger.info("[StockCheck] 주문용 코드 검색: %s → %s", stock_name, stock_code)
 
         price_data = await get_stock_price(stock_code, token=token) if stock_code else {}
-        balance_data = await get_securities_balance(account_id=1, token=token)
         accounts = await get_stocks_accounts(token=token)
         account_id = accounts[0]["accountId"] if accounts else 1
+        balance_data = await get_securities_balance(account_id=account_id, token=token)
     except Exception as e:
         logger.error("[StockCheck] 주문 정보 조회 실패: %s", e)
         price_data = {}
@@ -75,10 +75,26 @@ async def stock_check_node(state: ChatAgentState) -> dict:
     price_type = stock_info.get("price_type") or "MARKET"
     method_str = "시장가" if price_type == "MARKET" else f"지정가 {stock_info.get('price') or 0:,}원"
 
-    confirm_msg = f"{stock_name} {quantity}주를 {method_str}로 {order_type_str}하시겠습니까?"
+    total_amount = current_price * quantity if (current_price is not None and quantity is not None) else None
+    cash_balance = balance_data.get("cashBalance")
+    balance_after = (cash_balance - total_amount) if (cash_balance is not None and total_amount is not None) else None
+
+    lines = [
+        "📋 주문 확인",
+        f"종목명: {stock_name}" + (f" ({stock_code})" if stock_code else ""),
+        f"주문 유형: {method_str} {order_type_str}",
+        f"수량: {quantity or 0:,}주",
+    ]
+    ]
     if current_price:
-        confirm_msg += f" (현재가 {current_price:,}원)"
-    confirm_msg += " PIN을 입력해 주세요."
+        lines.append(f"현재가: {current_price:,}원")
+    if total_amount:
+        lines.append(f"총 예상 금액: {total_amount:,}원")
+    if balance_after is not None:
+        lines.append(f"주문 후 예수금: {balance_after:,}원")
+    lines.append("\nPIN을 입력해 주세요.")
+
+    confirm_msg = "\n".join(lines)
 
     updated_stock_info = {
         **stock_info,

@@ -918,13 +918,27 @@
 
 # TRANSFERS API
 
+> 사용자가 자신의 계좌에서 다른 계좌로 직접 송금할 수 있는 이체 기능
+
+---
+
+## API 목록
+
+| # | 메서드 | 경로 | 설명 | 상태코드 |
+| --- | --- | --- | --- | --- |
+| 6-1 | POST | `/api/v1/transfers` | 이체 요청 | 201 |
+| 6-2 | POST | `/api/v1/transfers/{transferId}/approve` | 이체 승인 | 200 |
+| 6-3 | GET | `/api/v1/transfers/{transferId}` | 이체 결과 조회 | 200 |
+
 ---
 
 ## 6-1. 이체 요청
+
 **POST** `/transfers` | Bearer Token 필요
 **추가 헤더:** `Idempotency-Key: {uuid}`
 
 **Request Body**
+
 ```json
 {
   "fromAccountId": 1001,
@@ -933,15 +947,15 @@
   "transferAmount": 500000,
   "requestedBy": "USER"
 }
-````
+```
 
-| 필드            | 타입    | 필수 | 설명               |
-| --------------- | ------- | ---- | ------------------ |
-| fromAccountId   | Long    | O    | 출금 계좌 ID       |
-| toBankCode      | String  | O    | 입금 은행 코드     |
-| toAccountNumber | String  | O    | 입금 계좌번호      |
-| transferAmount  | Decimal | O    | 이체 금액 (0 초과) |
-| requestedBy     | String  | O    | USER / AI          |
+| 필드            | 타입       | 필수 | 설명                              |
+| --------------- | ---------- | ---- | --------------------------------- |
+| fromAccountId   | Long       | O    | 출금 계좌 ID                      |
+| toBankCode      | String     | O    | 입금 은행 코드 (예: 088)          |
+| toAccountNumber | String     | O    | 입금 계좌번호 (예: 110-123-456789)|
+| transferAmount  | BigDecimal | O    | 이체 금액                         |
+| requestedBy     | String     | O    | USER / AI                         |
 
 **Response** `201 Created`
 
@@ -957,17 +971,24 @@
 }
 ```
 
-| 상황           | 코드         | 메시지                        |
-| -------------- | ------------ | ----------------------------- |
-| 잔액 부족      | TRANSFER_002 | 잔액이 부족합니다             |
-| 계좌 이상 상태 | ACCOUNT_003  | 계좌 상태가 유효하지 않습니다 |
-| 접근 불가      | ACCOUNT_002  | 본인 계좌가 아닙니다          |
+| 상황           | HTTP | 코드         | 메시지                        |
+| -------------- | ---- | ------------ | ----------------------------- |
+| 잔액 부족      | 400  | TRANSFER_002 | 잔액이 부족합니다             |
+| 계좌 이상 상태 | 400  | ACCOUNT_003  | 계좌 상태가 유효하지 않습니다 |
+| 접근 불가      | 403  | ACCOUNT_002  | 본인 계좌가 아닙니다          |
+| 계좌 없음      | 404  | ACCOUNT_001  | 해당 계좌를 찾을 수 없습니다  |
 
 ---
 
 ## 6-2. 이체 승인
 
 **POST** `/transfers/{transferId}/approve` | Bearer Token 필요
+
+**Path Parameter**
+
+| 파라미터   | 타입 | 설명    |
+| ---------- | ---- | ------- |
+| transferId | Long | 이체 ID |
 
 **Request Body** 없음
 
@@ -985,16 +1006,23 @@
 }
 ```
 
-| 상황         | 코드         | 메시지                          |
-| ------------ | ------------ | ------------------------------- |
-| 이체 건 없음 | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
-| 중복 승인    | TRANSFER_003 | 이미 처리 완료된 이체입니다     |
+| 상황         | HTTP | 코드         | 메시지                          |
+| ------------ | ---- | ------------ | ------------------------------- |
+| 이체 건 없음 | 404  | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
+| 접근 불가    | 403  | TRANSFER_004 | 본인 이체 건이 아닙니다         |
+| 중복 승인    | 409  | TRANSFER_003 | 이미 처리 완료된 이체입니다     |
 
 ---
 
 ## 6-3. 이체 결과 조회
 
 **GET** `/transfers/{transferId}` | Bearer Token 필요
+
+**Path Parameter**
+
+| 파라미터   | 타입 | 설명    |
+| ---------- | ---- | ------- |
+| transferId | Long | 이체 ID |
 
 **Response** `200 OK`
 
@@ -1016,10 +1044,67 @@
 }
 ```
 
-| 상황         | 코드         | 메시지                          |
-| ------------ | ------------ | ------------------------------- |
-| 이체 건 없음 | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
-| 접근 불가    | TRANSFER_004 | 본인 이체 건이 아닙니다         |
+| 필드            | 타입       | 설명                                    |
+| --------------- | ---------- | --------------------------------------- |
+| transferId      | Long       | 이체 ID                                 |
+| fromAccountId   | Long       | 출금 계좌 ID                            |
+| toBankCode      | String     | 입금 은행 코드                          |
+| toAccountNumber | String     | 입금 계좌번호                           |
+| transferAmount  | BigDecimal | 이체 금액                               |
+| transferStatus  | String     | 이체 상태 (PENDING / SUCCESS / FAILED)  |
+| failureReason   | String     | 실패 사유 (실패 시에만 표시)            |
+| requestedAt     | DateTime   | 요청 시간                               |
+| completedAt     | DateTime   | 완료 시간                               |
+
+| 상황         | HTTP | 코드         | 메시지                          |
+| ------------ | ---- | ------------ | ------------------------------- |
+| 이체 건 없음 | 404  | TRANSFER_001 | 해당 이체 건을 찾을 수 없습니다 |
+| 접근 불가    | 403  | TRANSFER_004 | 본인 이체 건이 아닙니다         |
+
+---
+
+## 보안 사항
+
+- Idempotency-Key 필수: 중복 요청 방지
+- 출금 계좌 소유자 검증: 본인 계좌만 이체 가능
+- 이체 승인 권한 검증: 본인의 이체 건만 승인 가능
+- Trace ID 추적: 모든 요청에 traceId 포함
+
+---
+
+## 에러 코드 정리
+
+| 코드         | HTTP | 설명                            |
+| ------------ | ---- | ------------------------------- |
+| ACCOUNT_001  | 404  | 해당 계좌를 찾을 수 없습니다    |
+| ACCOUNT_002  | 403  | 본인 계좌가 아닙니다            |
+| ACCOUNT_003  | 400  | 계좌 상태가 유효하지 않습니다   |
+| TRANSFER_001 | 404  | 해당 이체 건을 찾을 수 없습니다 |
+| TRANSFER_002 | 400  | 잔액 부족                       |
+| TRANSFER_003 | 409  | 이미 처리 완료된 이체입니다     |
+| TRANSFER_004 | 403  | 본인 이체 건이 아닙니다         |
+
+---
+
+## 이체 처리 흐름
+
+```
+1. 이체 요청 (POST /api/v1/transfers)
+   ↓
+2. 출금 계좌 검증 (계좌 존재 여부, 잔액, 상태 확인)
+   ↓
+3. 이체 건 생성 (Status: PENDING)
+   ↓
+4. 이체 승인 (POST /api/v1/transfers/{transferId}/approve)
+   ↓
+5. 출금 계좌: 잔액 차감
+   ↓
+6. 입금 계좌: 잔액 증가
+   ↓
+7. 이체 완료 (Status: SUCCESS)
+   ↓
+8. 결과 조회 (GET /api/v1/transfers/{transferId})
+```
 
 ---
 
@@ -1077,7 +1162,7 @@
 
 ## 8-1. 주식 주문 생성
 
-**POST** `/orders` | Bearer Token 필요  
+**POST** `/orders` | Bearer Token 필요
 **추가 헤더:** `Pin-Token: {pinToken}`, `Idempotency-Key: {uuid}`
 
 **Request Body**
@@ -1130,7 +1215,7 @@
 
 ## 8-2. 주문 취소
 
-**POST** `/orders/{orderId}/cancel` | Bearer Token 필요  
+**POST** `/orders/{orderId}/cancel` | Bearer Token 필요
 **추가 헤더:** `Pin-Token: {pinToken}`, `Idempotency-Key: {uuid}`
 
 **Request Body** 없음
@@ -1634,27 +1719,7 @@
 
 ---
 
-## 14-3. 가상월급 설정 수정
-
-**PATCH** `/virtual-salary` | Bearer Token 필요
-
-**Request Body** — 14-2 저장과 동일 형식
-
-**Response** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": {
-    "saved": true
-  },
-  "meta": { "traceId": "uuid" }
-}
-```
-
----
-
-## 14-4. 가상월급 대시보드 조회
+## 14-3. 가상월급 대시보드 조회
 
 **GET** `/virtual-salary/dashboard` | Bearer Token 필요
 
@@ -1688,7 +1753,7 @@
 
 ---
 
-## 14-5. 가상월급 홈 요약 조회
+## 14-4. 가상월급 홈 요약 조회
 
 **GET** `/virtual-salary/summary` | Bearer Token 필요
 
@@ -1727,7 +1792,7 @@
 
 ---
 
-## 14-6. AI 추천 비율 조회
+## 14-5. AI 추천 금액 조회
 
 **GET** `/virtual-salary/recommendation` | Bearer Token 필요
 
@@ -1737,9 +1802,9 @@
 {
   "success": true,
   "data": {
-    "recommendedEmergencyRatio": 30.0,
-    "recommendedInvestmentRatio": 20.0,
-    "summary": "현재 비상금이 목표 금액의 60% 수준으로 비상금 비율 확대를 추천합니다."
+    "recommendedEmergencyAmount": 500000,
+    "recommendedInvestmentAmount": 300000,
+    "summary": "현재 비상금이 목표 금액의 60% 수준으로 비상금 이체 금액 확대를 추천합니다."
   },
   "meta": { "traceId": "uuid" }
 }
@@ -1753,7 +1818,7 @@
 
 ## 15-1. 분배 설정
 
-**POST** `/distributions/settings` | Bearer Token 필요  
+**POST** `/distributions/settings` | Bearer Token 필요
 **추가 헤더:** `Pin-Token: {pinToken}`, `Idempotency-Key: {uuid}`
 
 **Request Body**
@@ -2430,3 +2495,4 @@
   "meta": { "traceId": "uuid" }
 }
 ```
+````
