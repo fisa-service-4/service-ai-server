@@ -36,12 +36,27 @@ async def executor_node(state: ChatAgentState) -> dict:
         else:
             result = {}
 
-        if intent == "ASSET" and pending_action.get("type") == "VIRTUAL_SALARY":
+        if intent == "STOCK":
+            stock_info = state.get("stock_info", {})
+            order_type = "매수" if stock_info.get("order_type") == "BUY" else "매도"
+            name = stock_info.get("name", "")
+            quantity = stock_info.get("quantity") or 0
+            price = stock_info.get("current_price") or stock_info.get("price")
+            price_type = stock_info.get("price_type", "MARKET")
+            price_str = f"{int(price):,}원" if price is not None else ("시장가" if price_type == "MARKET" else "-")
+            message = (
+                f"✅ 주문 완료\n"
+                f"• 종목: {name}\n"
+                f"• 주문 유형: {order_type}\n"
+                f"• 수량: {quantity:,}주\n"
+                f"• 가격: {price_str}"
+            )
+        elif intent == "ASSET" and pending_action.get("type") == "VIRTUAL_SALARY":
             salary = pending_action.get("targetSalary") or 0
             investment = pending_action.get("investmentAmount") or 0
             emergency = pending_action.get("emergencyAmount") or 0
             message = (
-                f"가상월급 설정이 적용되었습니다.\n"
+                f"✅ 가상월급 설정 완료\n"
                 f"• 가상월급: {salary:,}원\n"
                 f"• 투자 이체액: {investment:,}원\n"
                 f"• 비상금 이체액: {emergency:,}원"
