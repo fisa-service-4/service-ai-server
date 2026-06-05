@@ -41,17 +41,23 @@ def transfer_extract_node(state: ChatAgentState) -> dict:
     )
 
     try:
-        raw = response.choices[0].message.content.strip()
+        raw = (response.choices[0].message.content or "").strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
         extracted = json.loads(raw.strip())
-    except (json.JSONDecodeError, IndexError):
+    except (json.JSONDecodeError, IndexError, AttributeError):
         extracted = {"missing": ["파싱 오류"], "question": "다시 말씀해 주시겠어요?"}
 
     question = extracted.get("question")
-    info_complete = not extracted.get("missing") and question is None
+    missing = extracted.get("missing", [])
+    info_complete = not missing and question is None
+
+    # 계좌 목록이 아직 없는 첫 진입이면 질문 생성 안 함 → transfer_check가 한 번에 처리
+    accounts = state.get("realtime_data", {}).get("accounts", [])
+    if missing and not accounts:
+        question = None
 
     updated_messages = state["messages"]
     if question:

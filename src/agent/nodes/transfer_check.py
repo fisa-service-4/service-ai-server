@@ -11,16 +11,41 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
     except Exception:
         accounts = []
 
-    # 출금 계좌 미지정 → 번호 선택지 표시 (ID 노출 없음)
+    _ROLE_DISPLAY = {
+        "DEPOSIT": "입금 통장",
+        "SALARY": "월급 통장",
+        "EMERGENCY": "비상금 통장",
+        "STOCK": "투자 통장",
+    }
+
+    # 계좌 조회 실패
+    if not from_account_id and not accounts:
+        msg = "연동된 계좌 정보를 불러올 수 없습니다. 잠시 후 다시 시도해주세요."
+        return {
+            "realtime_data": {},
+            "transfer_info_complete": False,
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+        }
+
+    # 출금 계좌 미지정 → 계좌 목록 + 입금 정보 요청을 한 번에 표시
     if not from_account_id and accounts:
-        lines = ["출금 계좌를 선택해 주세요."]
+        lines = ["이체를 진행할게요. 아래 정보를 함께 알려주세요.\n"]
+        lines.append("[출금 계좌 선택]")
         for i, acc in enumerate(accounts, start=1):
             balance = acc.get("balance") or 0
+            role = acc.get("accountRole")
+            bank_code = acc.get("bankCode", "")
+            if bank_code in {"243", "247"}:
+                display_name = "주식 계좌"
+            else:
+                display_name = _ROLE_DISPLAY.get(role, acc.get("accountName", "계좌"))
             lines.append(
-                f"{i}. {acc.get('accountName', '계좌')} "
+                f"{i}. {display_name} "
                 f"({acc.get('accountNumber', '')}) "
                 f"- {balance:,}원"
             )
+        lines.append("\n입금하실 은행, 계좌번호, 금액을 함께 말씀해 주세요.")
+        lines.append("예) \"1번에서 신한은행 110-123-456789로 5만원\"")
         msg = "\n".join(lines)
         return {
             "realtime_data": {"accounts": accounts},
@@ -41,5 +66,5 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
             "accounts": accounts,
             "transfer_limit": limit_data.get("balance"),
         },
-        "transfer_info_complete": True,
+        "transfer_info_complete": bool(from_account_id),
     }

@@ -85,7 +85,6 @@ async def stock_check_node(state: ChatAgentState) -> dict:
         f"주문 유형: {method_str} {order_type_str}",
         f"수량: {quantity or 0:,}주",
     ]
-    ]
     if current_price:
         lines.append(f"현재가: {current_price:,}원")
     if total_amount:

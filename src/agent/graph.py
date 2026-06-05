@@ -61,8 +61,8 @@ def build_graph():
     graph.add_edge("Transfer_Extract", "Transfer_Check")
     graph.add_conditional_edges(
         "Transfer_Check",
-        lambda x: "ready" if x.get("transfer_info_complete") else "more",
-        {"ready": "Verifier", "more": "Transfer_Extract"}
+        lambda x: "ready" if x.get("transfer_info_complete") else "save",
+        {"ready": "Verifier", "save": "Save_Memory"}
     )
 
     graph.add_conditional_edges(
