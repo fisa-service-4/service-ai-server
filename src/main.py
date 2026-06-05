@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 
 
 class RecommendationRequest(BaseModel):
-    userId: int
-    targetSalary: Optional[float] = None
-    currentBalance: Optional[float] = None
-    monthlyExpectedIncome: Optional[float] = None
-    emergencyTargetAmount: Optional[float] = None
-    emergencyAmount: Optional[float] = None
-    investmentAmount: Optional[float] = None
+    user_id: int = Field(..., alias="userId")
+    target_salary: Optional[float] = Field(None, alias="targetSalary")
+    current_balance: Optional[float] = Field(None, alias="currentBalance")
+    monthly_expected_income: Optional[float] = Field(None, alias="monthlyExpectedIncome")
+    emergency_target_amount: Optional[float] = Field(None, alias="emergencyTargetAmount")
+    emergency_amount: Optional[float] = Field(None, alias="emergencyAmount")
+    investment_amount: Optional[float] = Field(None, alias="investmentAmount")
 
 
 @asynccontextmanager
