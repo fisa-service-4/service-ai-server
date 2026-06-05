@@ -4,8 +4,7 @@ BACKEND_URL=http://service-backend:8080
 
 LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 LLM_MODEL=gemini-2.5-flash
-LLM_API_KEY=AIzaSyCl7ZMS2P5aF4KIbZmPdto1SAReUFZN2Sg
-EMBEDDING_MODEL=bge-m3
+LLM_API_KEY=AIzaSyD5X66CbcArSApSVTaoh3oZKZ2EnA0uPY8
 
 # 분석/벡터 모두 단일 PostgreSQL의 스키마로 분리됨
 ANALYTICS_DB_HOST=postgres
