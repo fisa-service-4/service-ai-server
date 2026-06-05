@@ -1,6 +1,6 @@
 from src.agent.state import ChatAgentState
 from src.agent.tools.stock import execute_buy_order, execute_sell_order
-from src.agent.tools.transfer import execute_transfer
+from src.agent.tools.transfer import execute_transfer, approve_transfer
 from src.agent.tools.asset import update_salary_setting
 
 
@@ -19,12 +19,18 @@ async def executor_node(state: ChatAgentState) -> dict:
                 result = await execute_sell_order(stock_info, account_id=account_id, token=token)
 
         elif intent == "TRANSFER":
-            result = await execute_transfer({
+            transfer_res = await execute_transfer({
                 "fromAccountId": state.get("from_account_id"),
-                "toAccountId": state.get("to_account_id"),
-                "amount": state.get("amount"),
-                "description": state.get("description"),
+                "toBankCode": state.get("to_bank_code"),
+                "toAccountNumber": state.get("to_account_number"),
+                "transferAmount": state.get("amount"),
+                "requestedBy": "AI",
             }, token=token)
+            transfer_id = transfer_res.get("transferId")
+            if transfer_id:
+                result = await approve_transfer(transfer_id, token=token)
+            else:
+                result = transfer_res
 
         elif intent == "ASSET" and pending_action.get("type") == "VIRTUAL_SALARY":
             result = await update_salary_setting({
@@ -60,6 +66,14 @@ async def executor_node(state: ChatAgentState) -> dict:
                 f"• 가상월급: {salary:,}원\n"
                 f"• 투자 이체액: {investment:,}원\n"
                 f"• 비상금 이체액: {emergency:,}원"
+            )
+        elif intent == "TRANSFER":
+            amount = state.get("amount") or 0
+            to_account_number = state.get("to_account_number", "")
+            message = (
+                f"✅ 이체 완료\n"
+                f"• 입금 계좌: {to_account_number}\n"
+                f"• 이체 금액: {amount:,}원"
             )
         else:
             message = "실행이 완료되었습니다."
