@@ -11,14 +11,15 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
     except Exception:
         accounts = []
 
-    # 출금 계좌가 지정되지 않은 경우 → 계좌 목록 보여주고 선택 유도
+    # 출금 계좌 미지정 → 번호 선택지 표시 (ID 노출 없음)
     if not from_account_id and accounts:
         lines = ["출금 계좌를 선택해 주세요."]
-        for acc in accounts:
+        for i, acc in enumerate(accounts, start=1):
+            balance = acc.get("balance") or 0
             lines.append(
-                f"• {acc.get('accountName', '계좌')} "
+                f"{i}. {acc.get('accountName', '계좌')} "
                 f"({acc.get('accountNumber', '')}) "
-                f"[ID: {acc.get('accountId')}]"
+                f"- {balance:,}원"
             )
         msg = "\n".join(lines)
         return {
@@ -27,7 +28,7 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
             "messages": state["messages"] + [{"role": "assistant", "content": msg}],
         }
 
-    # 출금 계좌가 있으면 잔액 조회
+    # 출금 계좌 있으면 잔액 조회
     limit_data = {}
     if from_account_id:
         try:
