@@ -21,7 +21,13 @@ logger = logging.getLogger(__name__)
 
 
 class RecommendationRequest(BaseModel):
-    userId: Optional[int] = 1
+    userId: int
+    targetSalary: Optional[float] = None
+    currentBalance: Optional[float] = None
+    monthlyExpectedIncome: Optional[float] = None
+    emergencyTargetAmount: Optional[float] = None
+    emergencyAmount: Optional[float] = None
+    investmentAmount: Optional[float] = None
 
 
 @asynccontextmanager
@@ -60,10 +66,10 @@ async def trigger_pipeline(user_id: int = 1, max_step: int = 4):
     return {"status": "ok", "user_id": user_id, "max_step": max_step}
 
 
-@app.post("/virtual-salary/recommend")
+@app.post("/api/v1/ai/virtual-salary/recommend")
 async def recommend_virtual_salary(request: RecommendationRequest):
     try:
-        user_id = request.userId or 1
+        user_id = request.userId
         pool = await get_analytics_pool()
 
         async with pool.acquire() as conn:
