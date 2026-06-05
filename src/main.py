@@ -72,6 +72,24 @@ async def recommend_virtual_salary(request: RecommendationRequest):
         user_id = request.userId
         pool = await get_analytics_pool()
 
+        # 요청의 최신 금융 상태를 자산 스냅샷으로 저장 → 파이프라인 다음 실행 시 반영
+        if request.currentBalance is not None:
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO analysis_asset_snapshot
+                        (user_id, total_asset, total_bank_asset, total_stock_asset,
+                         emergency_fund_amount, emergency_fund_ratio, snapshot_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                    """,
+                    user_id,
+                    request.currentBalance,
+                    request.currentBalance,
+                    None,
+                    request.emergencyTargetAmount,
+                    None,
+                )
+
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """
