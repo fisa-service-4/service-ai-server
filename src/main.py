@@ -8,7 +8,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,7 +21,13 @@ logger = logging.getLogger(__name__)
 
 
 class RecommendationRequest(BaseModel):
-    userId: Optional[int] = 1
+    user_id: int = Field(..., alias="userId")
+    target_salary: Optional[float] = Field(None, alias="targetSalary")
+    current_balance: Optional[float] = Field(None, alias="currentBalance")
+    monthly_expected_income: Optional[float] = Field(None, alias="monthlyExpectedIncome")
+    emergency_target_amount: Optional[float] = Field(None, alias="emergencyTargetAmount")
+    emergency_amount: Optional[float] = Field(None, alias="emergencyAmount")
+    investment_amount: Optional[float] = Field(None, alias="investmentAmount")
 
 
 @asynccontextmanager
@@ -60,11 +66,29 @@ async def trigger_pipeline(user_id: int = 1, max_step: int = 4):
     return {"status": "ok", "user_id": user_id, "max_step": max_step}
 
 
-@app.post("/virtual-salary/recommend")
+@app.post("/api/v1/ai/virtual-salary/recommend")
 async def recommend_virtual_salary(request: RecommendationRequest):
     try:
-        user_id = request.userId or 1
+        user_id = request.user_id
         pool = await get_analytics_pool()
+
+        # 요청의 최신 금융 상태를 자산 스냅샷으로 저장 → 파이프라인 다음 실행 시 반영
+        if request.current_balance is not None:
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO analysis_asset_snapshot
+                        (user_id, total_asset, total_bank_asset, total_stock_asset,
+                         emergency_fund_amount, emergency_fund_ratio, snapshot_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                    """,
+                    user_id,
+                    request.current_balance,
+                    request.current_balance,
+                    None,
+                    request.emergency_target_amount,
+                    None,
+                )
 
         async with pool.acquire() as conn:
             rows = await conn.fetch(
