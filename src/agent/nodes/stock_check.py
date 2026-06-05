@@ -75,15 +75,16 @@ async def stock_check_node(state: ChatAgentState) -> dict:
     price_type = stock_info.get("price_type") or "MARKET"
     method_str = "시장가" if price_type == "MARKET" else f"지정가 {stock_info.get('price') or 0:,}원"
 
-    total_amount = current_price * quantity if current_price and quantity else None
+    total_amount = current_price * quantity if (current_price is not None and quantity is not None) else None
     cash_balance = balance_data.get("cashBalance")
-    balance_after = (cash_balance - total_amount) if cash_balance and total_amount else None
+    balance_after = (cash_balance - total_amount) if (cash_balance is not None and total_amount is not None) else None
 
     lines = [
         "📋 주문 확인",
         f"종목명: {stock_name}" + (f" ({stock_code})" if stock_code else ""),
         f"주문 유형: {method_str} {order_type_str}",
-        f"수량: {quantity}주",
+        f"수량: {quantity or 0:,}주",
+    ]
     ]
     if current_price:
         lines.append(f"현재가: {current_price:,}원")
