@@ -8,7 +8,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logging.basicConfig(level=logging.INFO)
 
@@ -69,11 +69,11 @@ async def trigger_pipeline(user_id: int = 1, max_step: int = 4):
 @app.post("/api/v1/ai/virtual-salary/recommend")
 async def recommend_virtual_salary(request: RecommendationRequest):
     try:
-        user_id = request.userId
+        user_id = request.user_id
         pool = await get_analytics_pool()
 
         # 요청의 최신 금융 상태를 자산 스냅샷으로 저장 → 파이프라인 다음 실행 시 반영
-        if request.currentBalance is not None:
+        if request.current_balance is not None:
             async with pool.acquire() as conn:
                 await conn.execute(
                     """
@@ -83,10 +83,10 @@ async def recommend_virtual_salary(request: RecommendationRequest):
                     VALUES ($1, $2, $3, $4, $5, $6, NOW())
                     """,
                     user_id,
-                    request.currentBalance,
-                    request.currentBalance,
+                    request.current_balance,
+                    request.current_balance,
                     None,
-                    request.emergencyTargetAmount,
+                    request.emergency_target_amount,
                     None,
                 )
 
