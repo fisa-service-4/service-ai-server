@@ -6,13 +6,16 @@ from src.agent.llm import client, MODEL
 _SYSTEM_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
 다음 JSON 형식으로만 응답하세요:
 {
-  "from_account_id": "출금 계좌 ID (없으면 null)",
-  "to_account_id": "입금 계좌 ID (없으면 null)",
-  "amount": 금액 (없으면 null),
+  "from_account_id": "출금 계좌 ID (숫자, 없으면 null)",
+  "to_bank_code": "입금 은행 코드 (예: 020, 088, 없으면 null)",
+  "to_account_number": "입금 계좌번호 (예: 110-123-456789, 없으면 null)",
+  "amount": 금액 (숫자, 없으면 null),
   "description": "이체 메모 (없으면 null)",
   "missing": ["부족한 정보 목록"],
   "question": "사용자에게 물어볼 내용 (정보가 충분하면 null)"
-}"""
+}
+
+은행 코드 참고: 우리은행=020, 신한은행=088, KB국민은행=004, NH농협=011, 하나은행=081, 카카오뱅크=090, 토스뱅크=092"""
 
 
 def transfer_extract_node(state: ChatAgentState) -> dict:
@@ -44,7 +47,8 @@ def transfer_extract_node(state: ChatAgentState) -> dict:
 
     return {
         "from_account_id": extracted.get("from_account_id") or "",
-        "to_account_id": extracted.get("to_account_id") or "",
+        "to_bank_code": extracted.get("to_bank_code") or "",
+        "to_account_number": extracted.get("to_account_number") or "",
         "amount": extracted.get("amount") or 0,
         "description": extracted.get("description") or "",
         "transfer_info_complete": info_complete,

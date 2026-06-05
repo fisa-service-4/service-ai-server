@@ -4,12 +4,36 @@ from src.agent.tools.transfer import get_bank_accounts, get_transfer_limit
 
 async def transfer_check_node(state: ChatAgentState) -> dict:
     token = state.get("token")
+    from_account_id = state.get("from_account_id", "")
+
     try:
         accounts = await get_bank_accounts(token=token)
-        limit_data = await get_transfer_limit(state.get("from_account_id", ""), token=token)
     except Exception:
         accounts = []
-        limit_data = {}
+
+    # 출금 계좌가 지정되지 않은 경우 → 계좌 목록 보여주고 선택 유도
+    if not from_account_id and accounts:
+        lines = ["출금 계좌를 선택해 주세요."]
+        for acc in accounts:
+            lines.append(
+                f"• {acc.get('accountName', '계좌')} "
+                f"({acc.get('accountNumber', '')}) "
+                f"[ID: {acc.get('accountId')}]"
+            )
+        msg = "\n".join(lines)
+        return {
+            "realtime_data": {"accounts": accounts},
+            "transfer_info_complete": False,
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+        }
+
+    # 출금 계좌가 있으면 잔액 조회
+    limit_data = {}
+    if from_account_id:
+        try:
+            limit_data = await get_transfer_limit(from_account_id, token=token)
+        except Exception:
+            limit_data = {}
 
     return {
         "realtime_data": {
