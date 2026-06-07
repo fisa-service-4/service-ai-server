@@ -61,10 +61,20 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
         except Exception:
             limit_data = {}
 
+    to_bank_code = state.get("to_bank_code", "")
+    to_account_number = state.get("to_account_number", "")
+    amount = state.get("amount", 0)
+    all_complete = (
+        bool(from_account_id)
+        and bool(to_bank_code)
+        and bool(to_account_number)
+        and bool(amount)
+    )
+
     return {
         "realtime_data": {
             "accounts": accounts,
             "transfer_limit": limit_data.get("balance"),
         },
-        "transfer_info_complete": bool(from_account_id),
+        "transfer_info_complete": all_complete,
     }

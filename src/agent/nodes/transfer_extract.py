@@ -2,6 +2,7 @@ import json
 
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
+from src.agent.tools.transfer import get_bank_accounts
 
 _BASE_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
 다음 JSON 형식으로만 응답하세요:
@@ -18,9 +19,17 @@ _BASE_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
 은행 코드 참고: 우리은행=020, 신한은행=088, KB국민은행=004, NH농협=011, 하나은행=081, 카카오뱅크=090, 토스뱅크=092"""
 
 
-def transfer_extract_node(state: ChatAgentState) -> dict:
-    # 계좌 목록이 있으면 프롬프트에 컨텍스트 추가 (ID는 내부용, 사용자에게 미노출)
+async def transfer_extract_node(state: ChatAgentState) -> dict:
+    token = state.get("token")
+
+    # 계좌 목록이 없으면 먼저 로드 (LLM이 "1번" 같은 번호를 account_id로 매핑하기 위해)
     accounts = state.get("realtime_data", {}).get("accounts", [])
+    if not accounts:
+        try:
+            accounts = await get_bank_accounts(token=token)
+        except Exception:
+            accounts = []
+
     system_prompt = _BASE_PROMPT
     if accounts:
         account_lines = ["\n[사용자 보유 계좌 목록 - from_account_id 매핑 참고용]"]
@@ -54,11 +63,6 @@ def transfer_extract_node(state: ChatAgentState) -> dict:
     missing = extracted.get("missing", [])
     info_complete = not missing and question is None
 
-    # 계좌 목록이 아직 없는 첫 진입이면 질문 생성 안 함 → transfer_check가 한 번에 처리
-    accounts = state.get("realtime_data", {}).get("accounts", [])
-    if missing and not accounts:
-        question = None
-
     updated_messages = state["messages"]
     if question:
         updated_messages = state["messages"] + [{"role": "assistant", "content": question}]
@@ -70,5 +74,6 @@ def transfer_extract_node(state: ChatAgentState) -> dict:
         "amount": extracted.get("amount") or 0,
         "description": extracted.get("description") or "",
         "transfer_info_complete": info_complete,
+        "realtime_data": {**state.get("realtime_data", {}), "accounts": accounts},
         "messages": updated_messages,
     }
