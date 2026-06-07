@@ -23,15 +23,6 @@ async def execute_transfer(body: dict, token: str | None = None) -> dict:
     return result.get("data", {})
 
 
-async def approve_transfer(transfer_id: int, token: str | None = None) -> dict:
-    result = await post(
-        f"/api/v1/transfers/{transfer_id}/approve",
-        token=token,
-        body=None,
-    )
-    return result.get("data", {})
-
-
 async def get_transfer_history(account_id: str, token: str | None = None) -> list:
     result = await get(f"/api/v1/accounts/{account_id}/transactions", token=token)
     return result.get("data", [])
