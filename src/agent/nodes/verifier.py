@@ -28,7 +28,8 @@ async def verifier_node(state: ChatAgentState) -> dict:
         result = {}
 
     if not matched:
-        fail_msg = "PIN이 일치하지 않습니다. 주문을 다시 요청해 주세요."
+        _action = {"TRANSFER": "이체", "STOCK": "주문", "ASSET": "설정"}.get(intent, "요청")
+        fail_msg = f"PIN이 일치하지 않습니다. {_action}을 다시 요청해 주세요."
         return {
             "stock_pin_verified": False,
             "transfer_pin_verified": False,

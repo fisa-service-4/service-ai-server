@@ -1,7 +1,11 @@
+import logging
+
 from src.agent.state import ChatAgentState
 from src.agent.tools.stock import execute_buy_order, execute_sell_order
 from src.agent.tools.transfer import execute_transfer
 from src.agent.tools.asset import update_salary_setting
+
+logger = logging.getLogger(__name__)
 
 
 async def executor_node(state: ChatAgentState) -> dict:
@@ -72,9 +76,10 @@ async def executor_node(state: ChatAgentState) -> dict:
             )
         else:
             message = "실행이 완료되었습니다."
-    except Exception:
+    except Exception as e:
+        logger.error("[Executor] 실행 오류 intent=%s: %s", intent, e)
         result = {}
-        message = "실행 중 오류가 발생했습니다."
+        message = "실행 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
 
     updated_messages = state["messages"] + [{"role": "assistant", "content": message}]
 
