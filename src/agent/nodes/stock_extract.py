@@ -62,16 +62,33 @@ def stock_extract_node(state: ChatAgentState) -> dict:
 
     prev_stock_info = state.get("stock_info") or {}
     has_order_intent = extracted.get("has_order_intent", False)
+
+    qty_val = extracted.get("quantity")
+    if qty_val is None:
+        qty_val = prev_stock_info.get("quantity")
+    try:
+        quantity = int(qty_val) if qty_val is not None else None
+    except (ValueError, TypeError):
+        quantity = None
+
+    price_val = extracted.get("price")
+    if price_val is None:
+        price_val = prev_stock_info.get("price")
+    try:
+        price = int(price_val) if price_val is not None else None
+    except (ValueError, TypeError):
+        price = None
+
     stock_info = {
         "is_holdings": extracted.get("is_holdings", False),
         "is_inquiry": extracted.get("is_inquiry", False),
         "has_order_intent": has_order_intent,
-        "code": extracted.get("code") or prev_stock_info.get("code"),
-        "name": extracted.get("name") or prev_stock_info.get("name"),
-        "quantity": extracted.get("quantity") or prev_stock_info.get("quantity"),
-        "order_type": extracted.get("order_type") or prev_stock_info.get("order_type"),
-        "price_type": extracted.get("price_type") or prev_stock_info.get("price_type"),
-        "price": extracted.get("price") or prev_stock_info.get("price"),
+        "code": extracted.get("code") if extracted.get("code") is not None else prev_stock_info.get("code"),
+        "name": extracted.get("name") if extracted.get("name") is not None else prev_stock_info.get("name"),
+        "quantity": quantity,
+        "order_type": extracted.get("order_type") if extracted.get("order_type") is not None else prev_stock_info.get("order_type"),
+        "price_type": extracted.get("price_type") if extracted.get("price_type") is not None else prev_stock_info.get("price_type"),
+        "price": price,
     }
 
     question = extracted.get("question")
