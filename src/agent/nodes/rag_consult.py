@@ -3,6 +3,7 @@ import asyncio
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
 from src.agent.tools.rag import search_rag_context
+from src.agent.tools.asset import get_virtual_salary_setting
 
 _SYSTEM_PROMPT = """당신은 프리랜서를 위한 AI 금융 어시스턴트입니다.
 사용자의 자산 관리, 소비 패턴, 투자 분석, 금융 상담 질문에 친절하고 전문적으로 답변하세요.
@@ -12,15 +13,18 @@ _SYSTEM_PROMPT = """당신은 프리랜서를 위한 AI 금융 어시스턴트�
 
 
 async def rag_consult_node(state: ChatAgentState) -> dict:
+    token = state.get("token")
+
     user_query = ""
     for msg in reversed(state["messages"]):
         if msg.get("role") == "user":
             user_query = msg["content"]
             break
 
-    rag_context = ""
-    if user_query:
-        rag_context = await search_rag_context(state["user_id"], user_query)
+    rag_context, virtual_salary = await asyncio.gather(
+        search_rag_context(state["user_id"], user_query) if user_query else asyncio.sleep(0, result=""),
+        get_virtual_salary_setting(token=token),
+    )
 
     system_content = _SYSTEM_PROMPT
     if rag_context:
@@ -30,6 +34,9 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
         system_content += f"\n\n[참고 자료]\n{context_text}"
     elif state.get("analysis_data"):
         system_content += f"\n\n[사용자 분석 데이터]\n{state['analysis_data']}"
+
+    if virtual_salary:
+        system_content += f"\n\n[가상월급 설정]\n{virtual_salary}"
 
     messages_for_llm = [{"role": "system", "content": system_content}] + state["messages"]
 
