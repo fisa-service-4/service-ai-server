@@ -1,7 +1,7 @@
 import logging
 
 from src.agent.state import ChatAgentState
-from src.agent.tools.stock import get_stock_price, get_securities_balance, get_stocks_accounts, search_stock
+from src.agent.tools.stock import get_stock_price, get_securities_balance, get_stocks_accounts, search_stock, get_holdings
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +11,35 @@ async def stock_check_node(state: ChatAgentState) -> dict:
     stock_code = stock_info.get("code")
     stock_name = stock_info.get("name")
     token = state.get("token")
+
+    if stock_info.get("is_holdings"):
+        try:
+            holdings = await get_holdings(token=token)
+        except Exception as e:
+            logger.error("[StockCheck] 보유종목 조회 실패: %s", e)
+            holdings = []
+
+        if not holdings:
+            msg = "현재 보유 중인 종목이 없습니다."
+        else:
+            lines = ["보유 종목 현황입니다.\n"]
+            for h in holdings:
+                name = h.get("stockName") or h.get("stockCode", "")
+                qty = h.get("quantity", 0)
+                avg = h.get("averagePrice")
+                current = h.get("currentPrice")
+                line = f"• {name}: {qty:,}주"
+                if avg is not None:
+                    line += f" / 평균단가 {avg:,}원"
+                if current is not None:
+                    line += f" / 현재가 {current:,}원"
+                lines.append(line)
+            msg = "\n".join(lines)
+
+        return {
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+            "info_complete": True,
+        }
 
     if stock_info.get("is_inquiry"):
         # 코드가 없으면 이름으로 검색

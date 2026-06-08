@@ -5,12 +5,17 @@ from src.agent.llm import client, MODEL
 
 _SYSTEM_PROMPT = """사용자의 메시지에서 주식 관련 의도를 파악하세요.
 
+is_holdings 판단 기준:
+- true: 보유종목/보유주식 목록을 물어보는 경우 ("보유종목 뭐야", "내 주식 보여줘", "보유 현황")
+- false: 그 외 모든 경우
+
 is_inquiry 판단 기준:
 - true: 현재가/시세/가격만 물어보는 경우 ("현재가 알려줘", "얼마야", "시세 조회")
 - false: 매수/매도/주문 의도가 있는 경우 ("사줘", "팔아줘", "매수해줘", "매도해줘", "주문해줘")
 
 다음 JSON 형식으로만 응답하세요. 마크다운 없이 순수 JSON만 출력하세요:
 {
+  "is_holdings": true 또는 false,
   "is_inquiry": true 또는 false,
   "code": "종목코드 (없으면 null)",
   "name": "종목명 (없으면 null)",
@@ -22,9 +27,9 @@ is_inquiry 판단 기준:
   "question": "사용자에게 물어볼 내용 (정보가 충분하면 null)"
 }
 
-예시1: "삼성전자 현재가 알려줘" → is_inquiry: true, missing: [], question: null
-예시2: "삼성전자 10주 매수해줘" → is_inquiry: false, order_type: "BUY", quantity: 10
-예시3: "삼성전자 1주 시장가로 사줘" → is_inquiry: false, order_type: "BUY", price_type: "MARKET", quantity: 1"""
+예시1: "삼성전자 현재가 알려줘" → is_holdings: false, is_inquiry: true, missing: [], question: null
+예시2: "삼성전자 10주 매수해줘" → is_holdings: false, is_inquiry: false, order_type: "BUY", quantity: 10
+예시3: "내 보유종목 뭐야" → is_holdings: true, is_inquiry: false, missing: [], question: null"""
 
 
 def stock_extract_node(state: ChatAgentState) -> dict:
@@ -49,6 +54,7 @@ def stock_extract_node(state: ChatAgentState) -> dict:
 
     prev_stock_info = state.get("stock_info") or {}
     stock_info = {
+        "is_holdings": extracted.get("is_holdings", False),
         "is_inquiry": extracted.get("is_inquiry", False),
         "code": extracted.get("code") or prev_stock_info.get("code"),
         "name": extracted.get("name") or prev_stock_info.get("name"),

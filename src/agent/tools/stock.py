@@ -18,6 +18,11 @@ async def get_stocks_accounts(token: str | None = None) -> list:
     return result.get("data", {}).get("accounts", [])
 
 
+async def get_holdings(token: str | None = None) -> list:
+    result = await get("/api/v1/holdings", token=token)
+    return result.get("data", {}).get("holdings", [])
+
+
 async def get_securities_balance(account_id: int = 1, token: str | None = None) -> dict:
     result = await get("/api/v1/stocks/cash-balance", token=token, params={"accountId": account_id})
     return result.get("data", {})
