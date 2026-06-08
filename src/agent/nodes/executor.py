@@ -46,11 +46,16 @@ async def executor_node(state: ChatAgentState) -> dict:
             order_type = "매수" if stock_info.get("order_type") == "BUY" else "매도"
             name = stock_info.get("name", "")
             quantity = stock_info.get("quantity") or 0
-            price = stock_info.get("current_price") or stock_info.get("price")
             price_type = stock_info.get("price_type", "MARKET")
-            price_str = f"{int(price):,}원" if price is not None else ("시장가" if price_type == "MARKET" else "-")
+            if price_type == "LIMIT":
+                limit_price = stock_info.get("price")
+                price_str = f"지정가 {int(limit_price):,}원" if limit_price else "-"
+                title = "주문 접수"
+            else:
+                price_str = "시장가"
+                title = "주문 완료"
             message = (
-                f"✅ 주문 완료\n"
+                f"✅ {title}\n"
                 f"• 종목: {name}\n"
                 f"• 주문 유형: {order_type}\n"
                 f"• 수량: {quantity:,}주\n"
