@@ -1,5 +1,11 @@
 from src.agent.state import ChatAgentState
-from src.agent.tools.transfer import get_bank_accounts, get_transfer_limit
+from src.agent.tools.transfer import get_bank_accounts
+
+_BANK_NAMES = {
+    "020": "우리은행", "088": "신한은행", "004": "KB국민은행", "011": "NH농협",
+    "081": "하나은행", "090": "카카오뱅크", "092": "토스뱅크", "071": "우체국",
+    "089": "케이뱅크", "243": "한국투자증권", "247": "NH투자증권",
+}
 
 
 async def transfer_check_node(state: ChatAgentState) -> dict:
@@ -53,18 +59,16 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
             "messages": state["messages"] + [{"role": "assistant", "content": msg}],
         }
 
-    # 출금 계좌 있으면 잔액 조회
-    limit_data = {}
-    if from_account_id:
-        try:
-            limit_data = await get_transfer_limit(from_account_id, token=token)
-        except Exception:
-            limit_data = {}
-
     to_bank_code = state.get("to_bank_code", "")
     to_account_number = state.get("to_account_number", "")
     amount = state.get("amount", 0)
-    balance = limit_data.get("balance", 0) or 0
+
+    # 이미 조회한 계좌 목록에서 출금 계좌 잔액 추출 (별도 잔액 API 불필요)
+    from_account = next(
+        (a for a in accounts if str(a.get("accountId")) == str(from_account_id)),
+        None,
+    )
+    balance = int(from_account.get("balance", 0)) if from_account else 0
 
     if amount and balance < amount:
         msg = f"잔액이 부족합니다. 현재 잔액: {balance:,}원, 이체 금액: {amount:,}원"
@@ -80,6 +84,25 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
         and bool(to_account_number)
         and bool(amount)
     )
+
+    if all_complete:
+        to_bank_name = _BANK_NAMES.get(to_bank_code, to_bank_code)
+        from_acc_name = from_account.get("accountName", "") if from_account else ""
+        from_acc_num = from_account.get("accountNumber", "") if from_account else ""
+        remaining = balance - amount
+        msg = (
+            f"이체 정보를 확인해 주세요.\n\n"
+            f"• 출금 계좌: {from_acc_name} ({from_acc_num})\n"
+            f"• 입금 계좌: {to_bank_name} {to_account_number}\n"
+            f"• 이체 금액: {amount:,}원\n"
+            f"• 이체 후 잔액: {remaining:,}원\n\n"
+            f"PIN을 입력해 주세요."
+        )
+        return {
+            "realtime_data": {"accounts": accounts, "transfer_limit": balance},
+            "transfer_info_complete": True,
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+        }
 
     return {
         "realtime_data": {

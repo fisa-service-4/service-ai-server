@@ -67,13 +67,7 @@ async def executor_node(state: ChatAgentState) -> dict:
                 f"• 비상금 이체액: {emergency:,}원"
             )
         elif intent == "TRANSFER":
-            amount = state.get("amount") or 0
-            to_account_number = state.get("to_account_number", "")
-            message = (
-                f"✅ 이체 완료\n"
-                f"• 입금 계좌: {to_account_number}\n"
-                f"• 이체 금액: {amount:,}원"
-            )
+            message = "이체가 완료되었습니다."
         else:
             message = "실행이 완료되었습니다."
     except Exception as e:
