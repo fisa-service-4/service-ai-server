@@ -4,6 +4,7 @@ from src.agent.state import ChatAgentState
 from src.agent.tools.stock import execute_buy_order, execute_sell_order
 from src.agent.tools.transfer import execute_transfer
 from src.agent.tools.asset import update_salary_setting
+from src.agent.nodes.transfer_check import _BANK_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +47,12 @@ async def executor_node(state: ChatAgentState) -> dict:
             order_type = "매수" if stock_info.get("order_type") == "BUY" else "매도"
             name = stock_info.get("name", "")
             quantity = stock_info.get("quantity") or 0
-            price = stock_info.get("current_price") or stock_info.get("price")
             price_type = stock_info.get("price_type", "MARKET")
-            price_str = f"{int(price):,}원" if price is not None else ("시장가" if price_type == "MARKET" else "-")
+            if price_type == "LIMIT":
+                limit_price = stock_info.get("price")
+                price_str = f"지정가 {int(limit_price):,}원" if limit_price else "-"
+            else:
+                price_str = "시장가"
             message = (
                 f"✅ 주문 완료\n"
                 f"• 종목: {name}\n"
@@ -67,7 +71,15 @@ async def executor_node(state: ChatAgentState) -> dict:
                 f"• 비상금 이체액: {emergency:,}원"
             )
         elif intent == "TRANSFER":
-            message = "이체가 완료되었습니다."
+            transfer_amount = state.get("amount") or 0
+            to_account_number = state.get("to_account_number", "")
+            to_bank_code = state.get("to_bank_code", "")
+            to_bank_name = _BANK_NAMES.get(to_bank_code, to_bank_code)
+            message = (
+                f"✅ 이체 완료\n"
+                f"• 입금 계좌: {to_bank_name} {to_account_number}\n"
+                f"• 이체 금액: {transfer_amount:,}원"
+            )
         else:
             message = "실행이 완료되었습니다."
     except Exception as e:

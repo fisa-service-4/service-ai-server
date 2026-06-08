@@ -28,18 +28,20 @@ async def stock_check_node(state: ChatAgentState) -> dict:
         if not holdings:
             msg = "현재 보유 중인 종목이 없습니다."
         else:
-            lines = ["보유 종목 현황입니다.\n"]
+            lines = ["💰 보유 종목 현황"]
+            total_eval = 0
             for h in holdings:
                 name = h.get("stockName") or h.get("stockCode", "")
                 qty = h.get("quantity") or 0
-                avg = h.get("averagePrice")
-                current = h.get("currentPrice")
-                line = f"• {name}: {qty:,}주"
-                if avg is not None:
-                    line += f" / 평균단가 {avg:,}원"
-                if current is not None:
-                    line += f" / 현재가 {current:,}원"
-                lines.append(line)
+                profit_rate = h.get("profitRate")
+                eval_amount = h.get("evaluationAmount") or 0
+                total_eval += eval_amount
+                value = f"{qty:,}주"
+                if profit_rate is not None:
+                    sign = "+" if profit_rate >= 0 else ""
+                    value += f" ({sign}{profit_rate:.1f}%)"
+                lines.append(f"• {name}: {value}")
+            lines.append(f"총 평가금액 {total_eval:,}원")
             msg = "\n".join(lines)
 
         return {
@@ -117,24 +119,25 @@ async def stock_check_node(state: ChatAgentState) -> dict:
     price_type = stock_info.get("price_type") or "MARKET"
     method_str = "시장가" if price_type == "MARKET" else f"지정가 {stock_info.get('price') or 0:,}원"
 
-    total_amount = current_price * quantity if (current_price is not None and quantity is not None) else None
+    order_price = stock_info.get("price") if price_type == "LIMIT" else current_price
+    total_amount = order_price * quantity if (order_price is not None and quantity is not None) else None
     cash_balance = balance_data.get("cashBalance")
     balance_after = (cash_balance - total_amount) if (cash_balance is not None and total_amount is not None) else None
 
     lines = [
-        "📋 주문 확인",
-        f"종목명: {stock_name}" + (f" ({stock_code})" if stock_code else ""),
-        f"주문 유형: {method_str} {order_type_str}",
-        f"수량: {quantity or 0:,}주",
+        "💰 주문 확인",
+        f"• 종목: {stock_name}" + (f" ({stock_code})" if stock_code else ""),
+        f"• 주문: {method_str} {order_type_str}",
+        f"• 수량: {quantity or 0:,}주",
     ]
 
     if current_price:
-        lines.append(f"현재가: {current_price:,}원")
+        lines.append(f"• 현재가: {current_price:,}원")
     if total_amount:
-        lines.append(f"총 예상 금액: {total_amount:,}원")
+        lines.append(f"• 예상 금액: {total_amount:,}원")
     if balance_after is not None:
-        lines.append(f"주문 후 예수금: {balance_after:,}원")
-    lines.append("\nPIN을 입력해 주세요.")
+        lines.append(f"• 주문 후 예수금: {balance_after:,}원")
+    lines.append("PIN을 입력해 주세요.")
 
     confirm_msg = "\n".join(lines)
 
