@@ -31,13 +31,16 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
 
     messages_for_llm = [{"role": "system", "content": system_content}] + state["messages"]
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=messages_for_llm,
-        temperature=0.7,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=messages_for_llm,
+            temperature=0.7,
+        )
+        ai_content = response.choices[0].message.content or "죄송합니다. 응답을 생성하지 못했습니다."
+    except Exception:
+        ai_content = "죄송합니다. 해당 질문에는 답변하기 어렵습니다. 다른 방식으로 질문해 주시거나, 계좌 조회, 이체, 주식 주문 등 도움이 필요하신 부분을 알려주세요."
 
-    ai_content = response.choices[0].message.content or "죄송합니다. 응답을 생성하지 못했습니다."
     updated_messages = state["messages"] + [{"role": "assistant", "content": ai_content}]
 
     return {

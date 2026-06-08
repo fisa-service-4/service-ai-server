@@ -102,10 +102,20 @@ async def send_message(
         else:
             result = await chat_graph.ainvoke(initial_state, config=config)
     except BaseException as e:
-        if not (_GraphInterrupt and isinstance(e, _GraphInterrupt)):
+        if _GraphInterrupt and isinstance(e, _GraphInterrupt):
+            result = None
+        else:
             _log.exception("chat_graph 실행 오류: %s", e)
-            return fail("AI_001", "AI 응답 생성에 실패했습니다.")
-        result = None
+            fallback = "죄송합니다. 해당 질문에는 답변하기 어렵습니다. 다른 방식으로 질문해 주시거나, 계좌 조회·이체·주식 주문 등 필요하신 부분을 알려주세요."
+            session["messages"].append({"role": "assistant", "content": fallback})
+            _message_counter += 1
+            return ok({
+                "messageId": _message_counter,
+                "role": "AI",
+                "intent": "UNKNOWN",
+                "content": fallback,
+                "actionRequired": False,
+            })
 
     # ainvoke 이후 snapshot으로 interrupt 여부 판단
     caught_interrupt = result is None  # GraphInterrupt exception으로 감지된 경우
