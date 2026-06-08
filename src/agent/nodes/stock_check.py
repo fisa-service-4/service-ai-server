@@ -31,7 +31,7 @@ async def stock_check_node(state: ChatAgentState) -> dict:
             lines = ["보유 종목 현황입니다.\n"]
             for h in holdings:
                 name = h.get("stockName") or h.get("stockCode", "")
-                qty = h.get("quantity", 0)
+                qty = h.get("quantity") or 0
                 avg = h.get("averagePrice")
                 current = h.get("currentPrice")
                 line = f"• {name}: {qty:,}주"
