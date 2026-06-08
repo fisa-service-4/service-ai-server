@@ -58,6 +58,7 @@ async def create_session(
         "title": body.title,
         "messages": [],
         "status": "ACTIVE",
+        "thread_version": 1,
     }
 
     return ok({"sessionId": session_id, "status": "ACTIVE"})
@@ -77,7 +78,8 @@ async def send_message(
     if not body.isPin:
         session["messages"].append({"role": "user", "content": body.message})
 
-    config = {"configurable": {"thread_id": str(body.sessionId)}}
+    thread_version = session.get("thread_version", 1)
+    config = {"configurable": {"thread_id": f"{body.sessionId}_{thread_version}"}}
     initial_state = {
         "user_id": session["user_id"],
         "token": credentials.credentials,
@@ -99,6 +101,10 @@ async def send_message(
     try:
         if is_interrupted and body.isPin:
             result = await chat_graph.ainvoke(Command(resume=body.message), config=config)
+        elif is_interrupted and not body.isPin:
+            session["thread_version"] = thread_version + 1
+            config = {"configurable": {"thread_id": f"{body.sessionId}_{session['thread_version']}"}}
+            result = await chat_graph.ainvoke(initial_state, config=config)
         else:
             result = await chat_graph.ainvoke(initial_state, config=config)
     except BaseException as e:
