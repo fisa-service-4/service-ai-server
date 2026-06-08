@@ -60,20 +60,27 @@ async def transfer_extract_node(state: ChatAgentState) -> dict:
         extracted = {"missing": ["파싱 오류"], "question": "다시 말씀해 주시겠어요?"}
 
     question = extracted.get("question")
-    missing = extracted.get("missing", [])
-    info_complete = not missing and question is None
+
+    from_account_id = extracted.get("from_account_id") or ""
+    to_bank_code = extracted.get("to_bank_code") or ""
+    to_account_number = extracted.get("to_account_number") or ""
+    amount = extracted.get("amount") or 0
+
+    # LLM의 question/missing 자기평가가 아닌 실제 필드 존재 여부로 완성 여부 판단
+    # (소형 LLM이 필드를 추출하면서도 question을 생성하는 경우를 방지)
+    fields_complete = bool(from_account_id) and bool(to_bank_code) and bool(to_account_number) and bool(amount)
 
     updated_messages = state["messages"]
-    if question:
+    if question and not fields_complete:
         updated_messages = state["messages"] + [{"role": "assistant", "content": question}]
 
     return {
-        "from_account_id": extracted.get("from_account_id") or "",
-        "to_bank_code": extracted.get("to_bank_code") or "",
-        "to_account_number": extracted.get("to_account_number") or "",
-        "amount": extracted.get("amount") or 0,
+        "from_account_id": from_account_id,
+        "to_bank_code": to_bank_code,
+        "to_account_number": to_account_number,
+        "amount": amount,
         "description": extracted.get("description") or "",
-        "transfer_info_complete": info_complete,
+        "transfer_info_complete": fields_complete,
         "realtime_data": {**state.get("realtime_data", {}), "accounts": accounts},
         "messages": updated_messages,
     }
