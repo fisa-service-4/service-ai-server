@@ -91,11 +91,11 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
         from_acc_num = from_account.get("accountNumber", "") if from_account else ""
         remaining = balance - amount
         msg = (
-            f"이체 정보를 확인해 주세요.\n\n"
+            f"💰 이체 확인\n"
             f"• 출금 계좌: {from_acc_name} ({from_acc_num})\n"
             f"• 입금 계좌: {to_bank_name} {to_account_number}\n"
             f"• 이체 금액: {amount:,}원\n"
-            f"• 이체 후 잔액: {remaining:,}원\n\n"
+            f"• 이체 후 잔액: {remaining:,}원\n"
             f"PIN을 입력해 주세요."
         )
         return {
