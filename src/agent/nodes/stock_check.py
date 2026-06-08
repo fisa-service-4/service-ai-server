@@ -50,6 +50,13 @@ async def stock_check_node(state: ChatAgentState) -> dict:
             "info_complete": True,
         }
 
+    if not stock_code and not stock_name:
+        msg = "어떤 종목을 주문할까요? 종목명이나 종목코드를 알려주세요."
+        return {
+            "info_complete": False,
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+        }
+
     try:
         if not stock_code and stock_name:
             results = await search_stock(stock_name, token=token)

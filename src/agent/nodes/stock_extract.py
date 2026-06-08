@@ -38,7 +38,7 @@ def stock_extract_node(state: ChatAgentState) -> dict:
     )
 
     try:
-        raw = response.choices[0].message.content.strip()
+        raw = (response.choices[0].message.content or "").strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -47,10 +47,11 @@ def stock_extract_node(state: ChatAgentState) -> dict:
     except (json.JSONDecodeError, IndexError):
         extracted = {"is_inquiry": False, "missing": ["파싱 오류"], "question": "다시 말씀해 주시겠어요?"}
 
+    prev_stock_info = state.get("stock_info") or {}
     stock_info = {
         "is_inquiry": extracted.get("is_inquiry", False),
-        "code": extracted.get("code"),
-        "name": extracted.get("name"),
+        "code": extracted.get("code") or prev_stock_info.get("code"),
+        "name": extracted.get("name") or prev_stock_info.get("name"),
         "quantity": extracted.get("quantity"),
         "order_type": extracted.get("order_type"),
         "price_type": extracted.get("price_type"),

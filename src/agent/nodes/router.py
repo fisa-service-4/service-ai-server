@@ -24,7 +24,7 @@ def router_node(state: ChatAgentState) -> dict:
         temperature=0,
     )
 
-    intent = response.choices[0].message.content.strip().upper()
+    intent = (response.choices[0].message.content or "").strip().upper()
     if intent not in {"ASSET", "STOCK", "TRANSFER"}:
         intent = "UNKNOWN"
 
