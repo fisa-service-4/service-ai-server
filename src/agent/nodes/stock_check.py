@@ -14,10 +14,16 @@ async def stock_check_node(state: ChatAgentState) -> dict:
 
     if stock_info.get("is_holdings"):
         try:
-            holdings = await get_holdings(token=token)
+            accounts = await get_stocks_accounts(token=token)
+            account_id = accounts[0]["accountId"] if accounts else 1
+            holdings = await get_holdings(account_id=account_id, token=token)
+            logger.info("[StockCheck] 보유종목 조회 결과: %s", holdings)
         except Exception as e:
             logger.error("[StockCheck] 보유종목 조회 실패: %s", e)
-            holdings = []
+            return {
+                "messages": state["messages"] + [{"role": "assistant", "content": f"보유종목 조회 중 오류가 발생했습니다: {e}"}],
+                "info_complete": True,
+            }
 
         if not holdings:
             msg = "현재 보유 중인 종목이 없습니다."
