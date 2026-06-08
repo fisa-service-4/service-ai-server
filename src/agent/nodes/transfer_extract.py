@@ -7,6 +7,7 @@ from src.agent.tools.transfer import get_bank_accounts
 _BASE_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
 다음 JSON 형식으로만 응답하세요:
 {
+  "has_transfer_intent": true 또는 false,
   "from_account_id": "출금 계좌 ID (숫자, 없으면 null)",
   "to_bank_code": "입금 은행 코드 (예: 020, 088, 없으면 null)",
   "to_account_number": "입금 계좌번호 (예: 110-123-456789, 없으면 null)",
@@ -15,6 +16,10 @@ _BASE_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
   "missing": ["부족한 정보 목록"],
   "question": "사용자에게 물어볼 내용 (정보가 충분하면 null)"
 }
+
+has_transfer_intent 판단 기준 (명시적 실행 의도):
+- true: "이체해줘", "보내줘", "이체할게", "이체할래", "이체해", "송금해줘", "송금할게", "송금할래", "보낼게", "보낼래"
+- false: 계좌/금액 정보만 언급하거나 조회만 하는 경우
 
 은행 코드 참고: 우리은행=020, 신한은행=088, KB국민은행=004, NH농협=011, 하나은행=081, 카카오뱅크=090, 토스뱅크=092"""
 
@@ -60,19 +65,23 @@ async def transfer_extract_node(state: ChatAgentState) -> dict:
         extracted = {"missing": ["파싱 오류"], "question": "다시 말씀해 주시겠어요?"}
 
     question = extracted.get("question")
+    has_transfer_intent = extracted.get("has_transfer_intent", False)
 
     from_account_id = extracted.get("from_account_id") or ""
     to_bank_code = extracted.get("to_bank_code") or ""
     to_account_number = extracted.get("to_account_number") or ""
     amount = extracted.get("amount") or 0
 
-    # LLM의 question/missing 자기평가가 아닌 실제 필드 존재 여부로 완성 여부 판단
-    # (소형 LLM이 필드를 추출하면서도 question을 생성하는 경우를 방지)
     fields_complete = bool(from_account_id) and bool(to_bank_code) and bool(to_account_number) and bool(amount)
+    # 이체 실행은 명시적 의도가 있고 모든 필드가 채워진 경우만
+    transfer_info_complete = fields_complete and has_transfer_intent
 
     updated_messages = state["messages"]
     if question and not fields_complete:
         updated_messages = state["messages"] + [{"role": "assistant", "content": question}]
+    elif fields_complete and not has_transfer_intent:
+        confirm_msg = "이체를 진행할까요? 진행하시려면 \"이체할게\" 또는 \"이체해줘\"라고 말씀해 주세요."
+        updated_messages = state["messages"] + [{"role": "assistant", "content": confirm_msg}]
 
     return {
         "from_account_id": from_account_id,
@@ -80,7 +89,7 @@ async def transfer_extract_node(state: ChatAgentState) -> dict:
         "to_account_number": to_account_number,
         "amount": amount,
         "description": extracted.get("description") or "",
-        "transfer_info_complete": fields_complete,
+        "transfer_info_complete": transfer_info_complete,
         "realtime_data": {**state.get("realtime_data", {}), "accounts": accounts},
         "messages": updated_messages,
     }
