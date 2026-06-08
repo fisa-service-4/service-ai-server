@@ -41,8 +41,7 @@ async def stock_check_node(state: ChatAgentState) -> dict:
                     sign = "+" if profit_rate >= 0 else ""
                     value += f" ({sign}{profit_rate:.1f}%)"
                 lines.append(f"• {name}: {value}")
-            if total_eval:
-                lines.append(f"총 평가금액 {total_eval:,}원")
+            lines.append(f"총 평가금액 {total_eval:,}원")
             msg = "\n".join(lines)
 
         return {
