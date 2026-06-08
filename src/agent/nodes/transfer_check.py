@@ -68,7 +68,7 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
         (a for a in accounts if str(a.get("accountId")) == str(from_account_id)),
         None,
     )
-    balance = int(from_account.get("balance", 0)) if from_account else 0
+    balance = int(from_account.get("balance") or 0) if from_account else 0
 
     if amount and balance < amount:
         msg = f"잔액이 부족합니다. 현재 잔액: {balance:,}원, 이체 금액: {amount:,}원"
