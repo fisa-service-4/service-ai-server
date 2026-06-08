@@ -64,11 +64,14 @@ MOCK_ASSET_SNAPSHOT = {
 }
 
 
-async def insert_mock_data():
+async def insert_mock_data(user_id: int):
     pool = await get_analytics_pool()
     async with pool.acquire() as conn:
         # 중복 방지: 이미 데이터가 있으면 스킵
-        count = await conn.fetchval("SELECT COUNT(*) FROM analysis_raw_transaction WHERE user_id = 1")
+        count = await conn.fetchval(
+            "SELECT COUNT(*) FROM analysis_raw_transaction WHERE user_id = $1",
+            user_id,
+        )
         if count > 0:
             return
 
@@ -82,7 +85,7 @@ async def insert_mock_data():
                      transaction_at, raw_payload, synced_at)
                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
                 """,
-                1,
+                user_id,
                 tx["source_type"],
                 tx["source_transaction_id"],
                 1001,
@@ -103,7 +106,7 @@ async def insert_mock_data():
                  emergency_fund_amount, emergency_fund_ratio, snapshot_at)
             VALUES ($1,$2,$3,$4,$5,$6,$7)
             """,
-            1,
+            user_id,
             s["total_asset"],
             s["total_bank_asset"],
             s["total_stock_asset"],

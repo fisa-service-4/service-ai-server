@@ -10,7 +10,7 @@ async def run_pipeline(user_id: int, max_step: int = 4):
     logger.info("[Pipeline] 시작 - user_id=%s max_step=%s", user_id, max_step)
 
     logger.info("[1단계] mock 데이터 INSERT")
-    await insert_mock_data()
+    await insert_mock_data(user_id)
     logger.info("[1단계] 완료")
     if max_step <= 1:
         return

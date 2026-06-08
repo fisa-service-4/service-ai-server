@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 langgraph
-langchain-openai
 openai
 asyncpg
 psycopg2-binary
