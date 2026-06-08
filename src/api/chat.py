@@ -97,7 +97,7 @@ async def send_message(
         pass
 
     try:
-        if is_interrupted:
+        if is_interrupted and body.isPin:
             result = await chat_graph.ainvoke(Command(resume=body.message), config=config)
         else:
             result = await chat_graph.ainvoke(initial_state, config=config)
