@@ -4,6 +4,7 @@ from src.agent.state import ChatAgentState
 from src.agent.tools.stock import execute_buy_order, execute_sell_order
 from src.agent.tools.transfer import execute_transfer
 from src.agent.tools.asset import update_salary_setting
+from src.agent.nodes.transfer_check import _BANK_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -70,15 +71,10 @@ async def executor_node(state: ChatAgentState) -> dict:
                 f"• 비상금 이체액: {emergency:,}원"
             )
         elif intent == "TRANSFER":
-            _bank_names = {
-                "020": "우리은행", "088": "신한은행", "004": "KB국민은행", "011": "NH농협",
-                "081": "하나은행", "090": "카카오뱅크", "092": "토스뱅크", "071": "우체국",
-                "089": "케이뱅크", "243": "한국투자증권", "247": "NH투자증권",
-            }
             transfer_amount = state.get("amount") or 0
             to_account_number = state.get("to_account_number", "")
             to_bank_code = state.get("to_bank_code", "")
-            to_bank_name = _bank_names.get(to_bank_code, to_bank_code)
+            to_bank_name = _BANK_NAMES.get(to_bank_code, to_bank_code)
             message = (
                 f"✅ 이체 완료\n"
                 f"• 입금 계좌: {to_bank_name} {to_account_number}\n"
