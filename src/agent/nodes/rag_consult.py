@@ -12,6 +12,24 @@ _SYSTEM_PROMPT = """당신은 프리랜서를 위한 AI 금융 어시스턴트�
 한국어로 답변하세요. 답변은 3~5문장 이내로 간결하게 작성하세요."""
 
 
+async def _safe_rag(user_id: str, query: str) -> str:
+    if not query:
+        return ""
+    try:
+        return await search_rag_context(user_id, query)
+    except Exception:
+        return ""
+
+
+async def _safe_virtual_salary(token: str | None) -> dict:
+    if not token:
+        return {}
+    try:
+        return await get_virtual_salary_setting(token=token)
+    except Exception:
+        return {}
+
+
 async def rag_consult_node(state: ChatAgentState) -> dict:
     token = state.get("token")
 
@@ -22,8 +40,8 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
             break
 
     rag_context, virtual_salary = await asyncio.gather(
-        search_rag_context(state["user_id"], user_query) if user_query else asyncio.sleep(0, result=""),
-        get_virtual_salary_setting(token=token),
+        _safe_rag(state["user_id"], user_query),
+        _safe_virtual_salary(token),
     )
 
     system_content = _SYSTEM_PROMPT
