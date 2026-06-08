@@ -54,15 +54,15 @@ def build_graph():
     graph.add_edge("Stock_Extract", "Stock_Check")
     graph.add_conditional_edges(
         "Stock_Check",
-        lambda x: "done" if x.get("stock_info", {}).get("is_inquiry") else ("ready" if x.get("info_complete") else "more"),
+        lambda x: "done" if ((x.get("stock_info") or {}).get("is_inquiry") or (x.get("stock_info") or {}).get("is_holdings")) else ("ready" if x.get("info_complete") else "more"),
         {"done": "Save_Memory", "ready": "Verifier", "more": "Stock_Extract"}
     )
 
     graph.add_edge("Transfer_Extract", "Transfer_Check")
     graph.add_conditional_edges(
         "Transfer_Check",
-        lambda x: "ready" if x.get("transfer_info_complete") else "more",
-        {"ready": "Verifier", "more": "Transfer_Extract"}
+        lambda x: "ready" if x.get("transfer_info_complete") else "save",
+        {"ready": "Verifier", "save": "Save_Memory"}
     )
 
     graph.add_conditional_edges(

@@ -1,3 +1,5 @@
+import uuid
+
 from src.agent.tools.client import get, post
 
 
@@ -12,7 +14,12 @@ async def get_transfer_limit(account_id: str, token: str | None = None) -> dict:
 
 
 async def execute_transfer(body: dict, token: str | None = None) -> dict:
-    result = await post("/api/v1/transfers", token=token, body=body)
+    result = await post(
+        "/api/v1/transfers",
+        token=token,
+        body=body,
+        extra_headers={"Idempotency-Key": str(uuid.uuid4())},
+    )
     return result.get("data", {})
 
 
