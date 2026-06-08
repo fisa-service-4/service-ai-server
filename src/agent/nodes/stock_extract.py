@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 from src.agent.state import ChatAgentState
@@ -40,8 +41,9 @@ has_order_intent 판단 기준 (명시적 실행 의도):
 예시5: "주문할게" → has_order_intent: true"""
 
 
-def stock_extract_node(state: ChatAgentState) -> dict:
-    response = client.chat.completions.create(
+async def stock_extract_node(state: ChatAgentState) -> dict:
+    response = await asyncio.to_thread(
+        client.chat.completions.create,
         model=MODEL,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
