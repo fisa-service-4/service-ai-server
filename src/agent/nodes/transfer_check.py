@@ -64,6 +64,16 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
     to_bank_code = state.get("to_bank_code", "")
     to_account_number = state.get("to_account_number", "")
     amount = state.get("amount", 0)
+    balance = limit_data.get("balance", 0) or 0
+
+    if amount and balance < amount:
+        msg = f"잔액이 부족합니다. 현재 잔액: {balance:,}원, 이체 금액: {amount:,}원"
+        return {
+            "realtime_data": {"accounts": accounts, "transfer_limit": balance},
+            "transfer_info_complete": False,
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+        }
+
     all_complete = (
         bool(from_account_id)
         and bool(to_bank_code)
@@ -74,7 +84,7 @@ async def transfer_check_node(state: ChatAgentState) -> dict:
     return {
         "realtime_data": {
             "accounts": accounts,
-            "transfer_limit": limit_data.get("balance"),
+            "transfer_limit": balance,
         },
         "transfer_info_complete": all_complete,
     }
