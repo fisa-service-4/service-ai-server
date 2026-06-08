@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 from src.agent.state import ChatAgentState
@@ -45,7 +46,8 @@ async def transfer_extract_node(state: ChatAgentState) -> dict:
             )
         system_prompt += "\n".join(account_lines)
 
-    response = client.chat.completions.create(
+    response = await asyncio.to_thread(
+        client.chat.completions.create,
         model=MODEL,
         messages=[
             {"role": "system", "content": system_prompt},

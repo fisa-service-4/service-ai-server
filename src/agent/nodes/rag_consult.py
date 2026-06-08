@@ -1,3 +1,5 @@
+import asyncio
+
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
 from src.agent.tools.rag import search_rag_context
@@ -32,7 +34,8 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
     messages_for_llm = [{"role": "system", "content": system_content}] + state["messages"]
 
     try:
-        response = client.chat.completions.create(
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
             model=MODEL,
             messages=messages_for_llm,
             temperature=0.7,
