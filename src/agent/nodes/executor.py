@@ -50,12 +50,10 @@ async def executor_node(state: ChatAgentState) -> dict:
             if price_type == "LIMIT":
                 limit_price = stock_info.get("price")
                 price_str = f"지정가 {int(limit_price):,}원" if limit_price else "-"
-                title = "주문 완료"
             else:
                 price_str = "시장가"
-                title = "주문 완료"
             message = (
-                f"✅ {title}\n"
+                f"✅ 주문 완료\n"
                 f"• 종목: {name}\n"
                 f"• 주문 유형: {order_type}\n"
                 f"• 수량: {quantity:,}주\n"
