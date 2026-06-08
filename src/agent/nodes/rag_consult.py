@@ -37,7 +37,7 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
         temperature=0.7,
     )
 
-    ai_content = response.choices[0].message.content
+    ai_content = response.choices[0].message.content or "죄송합니다. 응답을 생성하지 못했습니다."
     updated_messages = state["messages"] + [{"role": "assistant", "content": ai_content}]
 
     return {
