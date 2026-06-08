@@ -69,10 +69,10 @@ async def transfer_extract_node(state: ChatAgentState) -> dict:
     question = extracted.get("question")
     has_transfer_intent = extracted.get("has_transfer_intent", False)
 
-    from_account_id = extracted.get("from_account_id") or ""
-    to_bank_code = extracted.get("to_bank_code") or ""
-    to_account_number = extracted.get("to_account_number") or ""
-    amount = extracted.get("amount") or 0
+    from_account_id = extracted.get("from_account_id") or state.get("from_account_id") or ""
+    to_bank_code = extracted.get("to_bank_code") or state.get("to_bank_code") or ""
+    to_account_number = extracted.get("to_account_number") or state.get("to_account_number") or ""
+    amount = extracted.get("amount") or state.get("amount") or 0
 
     fields_complete = bool(from_account_id) and bool(to_bank_code) and bool(to_account_number) and bool(amount)
     # 이체 실행은 명시적 의도가 있고 모든 필드가 채워진 경우만
