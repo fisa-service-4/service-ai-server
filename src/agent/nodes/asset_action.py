@@ -1,20 +1,21 @@
-from src.agent.state import ChatAgentState
-from src.agent.llm import client, MODEL
+import json
 
-_DISTRIBUTION_KEYWORDS = [
-    "분배", "배분", "추천", "비율", "투자 비율", "저축 비율", "자산 분배",
-    "자산 배분", "어떻게 나눠", "어떻게 배분", "얼마나 투자", "얼마씩",
+from src.agent.state import ChatAgentState
+from src.pipeline.db import get_analytics_pool
+
+_RECOMMEND_KEYWORDS = [
+    "분배 추천", "배분 추천", "추천해줘", "추천해", "어떻게 나눠", "어떻게 배분",
+    "얼마씩", "얼마나 투자", "자산 분배", "자산 배분",
 ]
 
-_SYSTEM_PROMPT = """사용자의 자산 분석 데이터를 바탕으로 자산 분배 추천을 생성하세요.
-투자 비율, 비상금 비율, 생활비 비율을 퍼센트로 추천하고 이유를 설명하세요.
-한국어로 답변하세요. 답변은 3~5문장 이내로 간결하게 작성하세요."""
+_APPLY_KEYWORDS = [
+    "적용해줘", "적용해", "설정해줘", "설정해", "그대로 해줘", "반영해줘",
+]
 
 
-def asset_action_node(state: ChatAgentState) -> dict:
+async def asset_action_node(state: ChatAgentState) -> dict:
     analysis_data = state.get("analysis_data", {})
     intent = state.get("intent", "")
-    rag_context = state.get("rag_context", "")
 
     if not analysis_data or intent != "ASSET":
         return {"pending_action": {}}
@@ -25,30 +26,92 @@ def asset_action_node(state: ChatAgentState) -> dict:
             user_query = msg["content"]
             break
 
-    if not any(kw in user_query for kw in _DISTRIBUTION_KEYWORDS):
+    is_apply = any(kw in user_query for kw in _APPLY_KEYWORDS)
+    is_recommend = any(kw in user_query for kw in _RECOMMEND_KEYWORDS)
+
+    if not is_recommend and not is_apply:
         return {"pending_action": {}}
 
-    context = f"분석 데이터: {analysis_data}\n참고 정보: {rag_context}" if rag_context else f"분석 데이터: {analysis_data}"
+    user_id = int(state.get("user_id") or 1)
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": context},
-        ],
-        temperature=0.7,
+    if is_apply:
+        try:
+            pool = await get_analytics_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT DISTINCT ON (recommendation_type)
+                        recommendation_type, recommendation_content
+                    FROM analysis_ai_recommendation
+                    WHERE user_id = $1
+                    ORDER BY recommendation_type, created_at DESC
+                    """,
+                    user_id,
+                )
+        except Exception:
+            return {"pending_action": {}}
+
+        if not rows:
+            msg = "아직 분석 데이터가 없어요. 잠시 후 다시 시도해주세요."
+            return {
+                "pending_action": {},
+                "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+            }
+
+        recs = {row["recommendation_type"]: json.loads(row["recommendation_content"]) for row in rows}
+
+        return {
+            "pending_action": {
+                "type": "VIRTUAL_SALARY",
+                "targetSalary": int(recs.get("SALARY", {}).get("value") or 0),
+                "investmentAmount": int(recs.get("INVESTMENT", {}).get("value") or 0),
+                "emergencyAmount": int(recs.get("EMERGENCY", {}).get("value") or 0),
+            },
+            "messages": state["messages"] + [{"role": "assistant", "content": "PIN을 입력해 주세요."}],
+        }
+
+    # 추천 요청: DB에서 추천 데이터 조회
+    try:
+        pool = await get_analytics_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT DISTINCT ON (recommendation_type)
+                    recommendation_type, recommendation_content
+                FROM analysis_ai_recommendation
+                WHERE user_id = $1
+                ORDER BY recommendation_type, created_at DESC
+                """,
+                user_id,
+            )
+    except Exception:
+        return {"pending_action": {}}
+
+    if not rows:
+        msg = "아직 분석 데이터가 없어요. 잠시 후 다시 시도해주세요."
+        return {
+            "pending_action": {},
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+        }
+
+    recs = {row["recommendation_type"]: json.loads(row["recommendation_content"]) for row in rows}
+
+    salary = int(recs.get("SALARY", {}).get("value") or 0)
+    emergency = int(recs.get("EMERGENCY", {}).get("value") or 0)
+    investment = int(recs.get("INVESTMENT", {}).get("value") or 0)
+    salary_summary = recs.get("SALARY", {}).get("summary", "")
+    emergency_summary = recs.get("EMERGENCY", {}).get("summary", "")
+
+    recommendation = (
+        f"💰 AI 분배 추천\n"
+        f"• 가상월급: {salary:,}원\n"
+        f"• 투자 이체액: {investment:,}원\n"
+        f"• 비상금 이체액: {emergency:,}원\n\n"
+        f"{salary_summary}\n\n"
+        f"적용하시겠습니까?"
     )
 
-    recommendation = response.choices[0].message.content
-
-    pending_action = {
-        "type": "DISTRIBUTION",
-        "recommendation": recommendation,
-    }
-
-    updated_messages = state["messages"] + [{"role": "assistant", "content": recommendation}]
-
     return {
-        "pending_action": pending_action,
-        "messages": updated_messages,
+        "pending_action": {},
+        "messages": state["messages"] + [{"role": "assistant", "content": recommendation}],
     }
