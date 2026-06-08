@@ -192,7 +192,7 @@ async def get_sessions(credentials: HTTPAuthorizationCredentials = Depends(_bear
         for sid, s in _sessions.items()
         if s["user_id"] == user_id
     ]
-    return ok(user_sessions)
+    return ok(user_sessions[::-1])
 
 
 @router.get("/sessions/{session_id}/messages")
