@@ -8,13 +8,14 @@
 
 ## 공통 헤더
 
-| 헤더             | 설명                  | 필수 |
-| ---------------- | --------------------- | ---- |
-| X-Firebase-Uid   | Firebase 사용자 식별 ID | O    |
-| X-Trace-Id       | 요청 추적 ID           | O    |
+| 헤더           | 설명                    | 필수                          |
+| -------------- | ----------------------- | ----------------------------- |
+| X-Firebase-Uid | Firebase 사용자 식별 ID | 사용자 식별이 필요한 API만 O  |
+| X-Trace-Id     | 요청 추적 ID            | O                             |
 
 > JWT 인증 없음.
-> Firebase UID 헤더 기반으로 사용자를 식별합니다.
+> Firebase UID 헤더는 사용자 식별이 필요한 API에만 첨부합니다.
+> `accountId` 경로 변수로 대상을 특정할 수 있는 API(거래내역·잔액·카테고리 등)는 Firebase UID 헤더가 불필요합니다.
 
 ---
 
@@ -259,6 +260,10 @@
 
 **GET** `/bank/accounts/{accountId}/transactions`
 
+> `X-Firebase-Uid` 헤더 불필요 — `accountId`로 대상 계좌를 특정합니다.
+> 카드 결제로 발생한 거래는 `merchantName` / `merchantCategory` / `maskedCardNumber` 필드가 포함됩니다.
+> 일반 은행 거래(이체·입출금 등)는 해당 세 필드가 `null`로 반환됩니다.
+
 ### Query Parameters
 
 | 이름     | 타입    | 필수 | 설명                     |
@@ -280,7 +285,21 @@
       "transactionType": "DEPOSIT",
       "amount": 3000000,
       "balanceAfter": 3500000,
-      "description": "급여"
+      "description": "급여",
+      "merchantName": null,
+      "merchantCategory": null,
+      "maskedCardNumber": null
+    },
+    {
+      "transactionId": 9002,
+      "transactionDateTime": "2026-05-02T12:30:00",
+      "transactionType": "WITHDRAW",
+      "amount": 5500,
+      "balanceAfter": 3494500,
+      "description": "카드결제",
+      "merchantName": "스타벅스 강남점",
+      "merchantCategory": "CAFE",
+      "maskedCardNumber": "1234-****-****-5678"
     }
   ],
   "meta": {
@@ -289,27 +308,53 @@
 }
 ```
 
-| 필드                | 타입   | 설명        |
-| ------------------- | ------ | ----------- |
-| transactionId       | Long   | 거래 ID     |
-| transactionDateTime | String | 거래 발생일시 |
-| transactionType     | String | 거래 유형    |
-| amount              | Long   | 거래 금액    |
-| balanceAfter        | Long   | 거래 후 잔액 |
-| description         | String | 거래 적요    |
+| 필드                | 타입   | Nullable | 설명                                      |
+| ------------------- | ------ | -------- | ----------------------------------------- |
+| transactionId       | Long   | NO       | 거래 ID                                   |
+| transactionDateTime | String | NO       | 거래 발생일시                              |
+| transactionType     | String | NO       | 거래 유형                                  |
+| amount              | Long   | NO       | 거래 금액                                  |
+| balanceAfter        | Long   | NO       | 거래 후 잔액                               |
+| description         | String | YES      | 거래 적요                                  |
+| merchantName        | String | YES      | 가맹점명 (카드 결제 거래만 값 존재)         |
+| merchantCategory    | String | YES      | 가맹점 카테고리 (카드 결제 거래만 값 존재)  |
+| maskedCardNumber    | String | YES      | 마스킹 카드번호 (카드 결제 거래만 값 존재) |
+
+### merchantCategory 값
+
+| 값              | 설명       |
+| --------------- | ---------- |
+| FOOD_BEVERAGE   | 식음료     |
+| CAFE            | 카페       |
+| TRANSPORTATION  | 교통       |
+| SHOPPING        | 쇼핑       |
+| MART            | 마트/편의점 |
+| ENTERTAINMENT   | 여가/문화  |
+| MEDICAL         | 의료/건강  |
+| EDUCATION       | 교육       |
+| SUBSCRIPTION    | 구독       |
+| COMMUNICATION   | 통신       |
+| BEAUTY          | 뷰티/미용  |
+| TRAVEL          | 여행       |
+| GAS             | 주유       |
+| ETC             | 기타       |
 
 ### Error Codes
 
-| 상황           | 코드      | 메시지                     |
-| -------------- | --------- | -------------------------- |
-| 날짜 형식 오류 | VALID_001 | 날짜 형식은 YYYY-MM-DD여야 합니다 |
-| 계좌 없음      | ACCOUNT_001 | 계좌 없음                  |
+| 상황           | 코드        | 메시지                            |
+| -------------- | ----------- | --------------------------------- |
+| 날짜 형식 오류 | VALID_001   | 날짜 형식은 YYYY-MM-DD여야 합니다 |
+| 계좌 없음      | ACCOUNT_001 | 계좌 없음                         |
 
 ---
 
-## MYDATA-BANK-ACCOUNT-005. 거래 카테고리 조회
+## MYDATA-BANK-ACCOUNT-005. 거래 카테고리별 합계 조회
 
 **GET** `/bank/accounts/{accountId}/transactions/categories`
+
+> `X-Firebase-Uid` 헤더 불필요 — `accountId`로 대상 계좌를 특정합니다.
+> 해당 계좌에 연결된 카드의 승인 내역(`APPROVED`)을 기반으로 가맹점 카테고리별 지출 합계를 반환합니다.
+> 카드가 연결되지 않은 계좌이거나 승인 내역이 없는 경우 빈 배열을 반환합니다.
 
 ### Response `200 OK`
 
@@ -317,14 +362,9 @@
 {
   "success": true,
   "data": [
-    {
-      "category": "급여",
-      "amount": 3000000
-    },
-    {
-      "category": "식비",
-      "amount": 280000
-    }
+    { "category": "FOOD_BEVERAGE", "amount": 85000 },
+    { "category": "CAFE", "amount": 23500 },
+    { "category": "TRANSPORTATION", "amount": 15000 }
   ],
   "meta": {
     "traceId": "uuid"
@@ -332,10 +372,10 @@
 }
 ```
 
-| 필드     | 타입   | 설명          |
-| -------- | ------ | ------------- |
-| category | String | 거래 카테고리  |
-| amount   | Long   | 카테고리별 금액 |
+| 필드     | 타입   | 설명                            |
+| -------- | ------ | ------------------------------- |
+| category | String | 가맹점 카테고리 (merchantCategory 참고) |
+| amount   | Long   | 카테고리 합산 결제 금액          |
 
 ### Error Codes
 

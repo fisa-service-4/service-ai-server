@@ -912,8 +912,6 @@
 | 계좌 없음      | ACCOUNT_001 | 해당 계좌를 찾을 수 없습니다 |
 | 접근 불가      | ACCOUNT_002 | 본인 계좌가 아닙니다         |
 
-````
-
 ---
 
 # TRANSFERS API
@@ -1659,6 +1657,8 @@
 
 **GET** `/virtual-salary` | Bearer Token 필요
 
+> 설정이 없으면 모든 필드가 null인 빈 객체를 반환합니다 (404 아님).
+
 **Response** `200 OK`
 
 ```json
@@ -1668,8 +1668,8 @@
     "targetSalary": 3000000,
     "payday": 25,
     "emergencyTargetAmount": 5000000,
-    "investmentRatio": 20.0,
-    "emergencyRatio": 30.0,
+    "investmentAmount": 600000,
+    "emergencyAmount": 900000,
     "priorityOrder": ["SALARY", "EMERGENCY", "INVESTMENT"],
     "updatedAt": "2026-05-17T12:00:00"
   },
@@ -1690,8 +1690,8 @@
   "targetSalary": 3000000,
   "payday": 25,
   "emergencyTargetAmount": 5000000,
-  "investmentRatio": 20,
-  "emergencyRatio": 30,
+  "investmentAmount": 600000,
+  "emergencyAmount": 900000,
   "priorityOrder": ["SALARY", "EMERGENCY", "INVESTMENT"]
 }
 ```
@@ -1701,8 +1701,8 @@
 | targetSalary          | Decimal | O    | 목표 월급 (0 초과)                              |
 | payday                | Integer | O    | 월급일 (1~31)                                   |
 | emergencyTargetAmount | Decimal | X    | 비상금 목표 금액 (0 초과)                       |
-| investmentRatio       | Decimal | X    | 투자 비율 (0.00~100.00)                         |
-| emergencyRatio        | Decimal | X    | 비상금 비율 (0.00~100.00)                       |
+| investmentAmount      | Decimal | X    | 투자 이체 고정 금액 (0 초과)                    |
+| emergencyAmount       | Decimal | X    | 비상금 이체 고정 금액 (0 초과)                  |
 | priorityOrder         | Array   | X    | 분배 우선순위 (SALARY / EMERGENCY / INVESTMENT) |
 
 **Response** `201 Created`

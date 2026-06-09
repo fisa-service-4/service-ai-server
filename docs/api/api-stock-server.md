@@ -552,7 +552,7 @@
 
 ## STOCK-CASH-001. 예수금 입금
 
-**POST** `/accounts/{accountId}/cash/deposit`
+**POST** `/accounts/cash/deposit`
 
 > Write API — Saga 정상 step
 
@@ -560,6 +560,7 @@
 
 ```json
 {
+  "accountNumber": "300-777-000071",
   "amount": 500000,
   "sagaId": 1001
 }
@@ -567,10 +568,11 @@
 
 ### Request Fields
 
-| 필드   | 타입    | 필수 | 설명                  |
-| ------ | ------- | ---- | --------------------- |
-| amount | Decimal | O    | 입금 금액 (0 초과)    |
-| sagaId | Long    | X    | Saga 추적 ID (로깅용) |
+| 필드          | 타입    | 필수 | 설명                  |
+| ------------- | ------- | ---- | --------------------- |
+| accountNumber | String  | O    | 증권 계좌번호         |
+| amount        | Decimal | O    | 입금 금액 (0 초과)    |
+| sagaId        | Long    | X    | Saga 추적 ID (로깅용) |
 
 ### Response `200 OK`
 
@@ -598,7 +600,7 @@
 
 ## STOCK-CASH-002. 예수금 출금
 
-**POST** `/accounts/{accountId}/cash/withdraw`
+**POST** `/accounts/cash/withdraw`
 
 > Write API — Saga compensation step (rollback용)
 
@@ -606,6 +608,7 @@
 
 ```json
 {
+  "accountNumber": "300-777-000071",
   "amount": 500000,
   "sagaId": 1001
 }
@@ -613,10 +616,11 @@
 
 ### Request Fields
 
-| 필드   | 타입    | 필수 | 설명                  |
-| ------ | ------- | ---- | --------------------- |
-| amount | Decimal | O    | 출금 금액 (0 초과)    |
-| sagaId | Long    | X    | Saga 추적 ID (로깅용) |
+| 필드          | 타입    | 필수 | 설명                  |
+| ------------- | ------- | ---- | --------------------- |
+| accountNumber | String  | O    | 증권 계좌번호         |
+| amount        | Decimal | O    | 출금 금액 (0 초과)    |
+| sagaId        | Long    | X    | Saga 추적 ID (로깅용) |
 
 ### Response `200 OK`
 

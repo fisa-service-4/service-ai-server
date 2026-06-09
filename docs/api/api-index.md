@@ -13,6 +13,7 @@
 | -------------------------- | ------------------------- | -------------------------------- |
 | @api-service-backend.md    | 핵심 서비스 API 명세      | 회원/계약/알림/가상월급 개발 시  |
 | @api-bank-server.md        | 은행 원장 API 명세        | 계좌/이체/거래내역 기능 개발 시  |
+| @api-card-server.md        | 카드 원장 API 명세        | 카드/카드승인/카드결제 기능 개발 시 |
 | @api-stock-server.md       | 증권 원장 API 명세        | 주문/체결/보유종목 기능 개발 시  |
 | @api-transaction-server.md | Saga/이벤트 처리 API 명세 | 분산 트랜잭션 및 DLQ 작업 시     |
 | @api-mydata-server.md      | 마이데이터 API 명세       | 금융기관 연동 및 동기화 작업 시  |
