@@ -59,15 +59,26 @@ async def asset_action_node(state: ChatAgentState) -> dict:
             }
 
         recs = {row["recommendation_type"]: json.loads(row["recommendation_content"]) for row in rows}
+        salary = int(recs.get("SALARY", {}).get("value") or 0)
+        investment = int(recs.get("INVESTMENT", {}).get("value") or 0)
+        emergency = int(recs.get("EMERGENCY", {}).get("value") or 0)
+
+        confirm_msg = (
+            f"💰 분배 설정 확인\n"
+            f"• 가상월급: {salary:,}원\n"
+            f"• 투자 이체액: {investment:,}원\n"
+            f"• 비상금 이체액: {emergency:,}원\n"
+            f"PIN을 입력해 주세요."
+        )
 
         return {
             "pending_action": {
                 "type": "VIRTUAL_SALARY",
-                "targetSalary": int(recs.get("SALARY", {}).get("value") or 0),
-                "investmentAmount": int(recs.get("INVESTMENT", {}).get("value") or 0),
-                "emergencyAmount": int(recs.get("EMERGENCY", {}).get("value") or 0),
+                "targetSalary": salary,
+                "investmentAmount": investment,
+                "emergencyAmount": emergency,
             },
-            "messages": state["messages"] + [{"role": "assistant", "content": "PIN을 입력해 주세요."}],
+            "messages": state["messages"] + [{"role": "assistant", "content": confirm_msg}],
         }
 
     # 추천 요청: DB에서 추천 데이터 조회

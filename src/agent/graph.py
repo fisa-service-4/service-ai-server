@@ -4,15 +4,20 @@ from langgraph.checkpoint.memory import MemorySaver
 from src.agent.state import ChatAgentState
 from src.agent.nodes.initialize import initialize_node
 from src.agent.nodes.router import router_node
-from src.agent.nodes.rag_consult import rag_consult_node
-from src.agent.nodes.asset_action import asset_action_node
-from src.agent.nodes.stock_extract import stock_extract_node
-from src.agent.nodes.stock_check import stock_check_node
-from src.agent.nodes.transfer_extract import transfer_extract_node
-from src.agent.nodes.transfer_check import transfer_check_node
-from src.agent.nodes.verifier import verifier_node
-from src.agent.nodes.executor import executor_node
+from src.agent.nodes.guard import guard_node
 from src.agent.nodes.save_memory import save_memory_node
+from src.agent.subgraphs import asset_graph, stock_graph, transfer_graph
+
+
+def _route_after_guard(state: ChatAgentState) -> str:
+    if not state.get("guard_passed", True):
+        return "Save_Memory"
+    return {
+        "ASSET":    "Asset_Flow",
+        "UNKNOWN":  "Asset_Flow",
+        "STOCK":    "Stock_Flow",
+        "TRANSFER": "Transfer_Flow",
+    }.get(state.get("intent", "UNKNOWN"), "Save_Memory")
 
 
 def build_graph():
@@ -20,67 +25,33 @@ def build_graph():
 
     graph.add_node("Initialize", initialize_node)
     graph.add_node("Router", router_node)
-    graph.add_node("RAG_Consult", rag_consult_node)
-    graph.add_node("Asset_Action", asset_action_node)
-    graph.add_node("Stock_Extract", stock_extract_node)
-    graph.add_node("Stock_Check", stock_check_node)
-    graph.add_node("Transfer_Extract", transfer_extract_node)
-    graph.add_node("Transfer_Check", transfer_check_node)
-    graph.add_node("Verifier", verifier_node)
-    graph.add_node("Executor", executor_node)
+    graph.add_node("Guard", guard_node)
+    graph.add_node("Asset_Flow", asset_graph)
+    graph.add_node("Stock_Flow", stock_graph)
+    graph.add_node("Transfer_Flow", transfer_graph)
     graph.add_node("Save_Memory", save_memory_node)
 
     graph.set_entry_point("Initialize")
     graph.add_edge("Initialize", "Router")
+    graph.add_edge("Router", "Guard")
 
     graph.add_conditional_edges(
-        "Router",
-        lambda x: x["intent"],
+        "Guard",
+        _route_after_guard,
         {
-            "ASSET":    "RAG_Consult",
-            "STOCK":    "Stock_Extract",
-            "TRANSFER": "Transfer_Extract",
-            "UNKNOWN":  "RAG_Consult",
-        }
+            "Asset_Flow":    "Asset_Flow",
+            "Stock_Flow":    "Stock_Flow",
+            "Transfer_Flow": "Transfer_Flow",
+            "Save_Memory":   "Save_Memory",
+        },
     )
 
-    graph.add_edge("RAG_Consult", "Asset_Action")
-    graph.add_conditional_edges(
-        "Asset_Action",
-        lambda x: "action" if x.get("pending_action") else "done",
-        {"action": "Verifier", "done": "Save_Memory"}
-    )
-
-    graph.add_edge("Stock_Extract", "Stock_Check")
-    graph.add_conditional_edges(
-        "Stock_Check",
-        lambda x: "done" if ((x.get("stock_info") or {}).get("is_inquiry") or (x.get("stock_info") or {}).get("is_holdings")) else ("ready" if x.get("info_complete") else "more"),
-        {"done": "Save_Memory", "ready": "Verifier", "more": "Stock_Extract"}
-    )
-
-    graph.add_edge("Transfer_Extract", "Transfer_Check")
-    graph.add_conditional_edges(
-        "Transfer_Check",
-        lambda x: "ready" if x.get("transfer_info_complete") else "save",
-        {"ready": "Verifier", "save": "Save_Memory"}
-    )
-
-    graph.add_conditional_edges(
-        "Verifier",
-        lambda x: "ok" if (
-            x.get("stock_pin_verified") or
-            x.get("transfer_pin_verified") or
-            x.get("apply_pin_verified")
-        ) else "fail",
-        {"ok": "Executor", "fail": "Save_Memory"}
-    )
-
-    graph.add_edge("Executor", "Save_Memory")
+    graph.add_edge("Asset_Flow", "Save_Memory")
+    graph.add_edge("Stock_Flow", "Save_Memory")
+    graph.add_edge("Transfer_Flow", "Save_Memory")
     graph.add_edge("Save_Memory", END)
 
-    return graph.compile(
-        checkpointer=MemorySaver(),
-    )
+    return graph.compile(checkpointer=MemorySaver())
 
 
 chat_graph = build_graph()
