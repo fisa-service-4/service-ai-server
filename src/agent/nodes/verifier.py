@@ -9,8 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 async def verifier_node(state: ChatAgentState) -> dict:
-    # interrupt() 호출 → 그래프 일시정지, resume 시 입력값 반환
-    pin = interrupt("PIN을 입력해 주세요.")
+    # 직전 노드(Transfer_Check / Stock_Check / Asset_Action)가 추가한 확인 메시지를
+    # interrupt value 로 전달 → 부모 그래프 snapshot.interrupts[0].value 로 읽을 수 있음
+    ai_msgs = [m for m in state.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
+    confirm_msg = ai_msgs[-1]["content"] if ai_msgs else "PIN을 입력해 주세요."
+    pin = interrupt(confirm_msg)
 
     logger.info("[Verifier] interrupt resume 값: type=%s repr=%s", type(pin).__name__, repr(pin))
     pin_str = str(pin).strip() if pin else ""
