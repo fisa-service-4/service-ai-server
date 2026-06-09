@@ -102,8 +102,17 @@ async def send_message(
         if is_interrupted and body.isPin:
             result = await chat_graph.ainvoke(Command(resume=body.message), config=config)
         elif is_interrupted and not body.isPin:
+            pre_count = session.pop("pre_interrupt_count", None)
+            if pre_count is not None:
+                new_user_msg = session["messages"][-1]
+                session["messages"] = session["messages"][:pre_count] + [new_user_msg]
             session["thread_version"] = thread_version + 1
             config = {"configurable": {"thread_id": f"{body.sessionId}_{session['thread_version']}"}}
+            initial_state = {
+                "user_id": session["user_id"],
+                "token": credentials.credentials,
+                "messages": session["messages"],
+            }
             result = await chat_graph.ainvoke(initial_state, config=config)
         else:
             result = await chat_graph.ainvoke(initial_state, config=config)
@@ -138,9 +147,16 @@ async def send_message(
         sv = result or {}
 
     if now_interrupted:
-        ai_msgs = [m for m in sv.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
-        ai_content = ai_msgs[-1]["content"] if ai_msgs else "PIN을 입력해 주세요."
+        # 서브그래프 내부에서 interrupt() 호출 시 부모 snapshot.values 에는
+        # 서브그래프가 추가한 메시지가 없다. interrupt(value) 로 전달된 확인 메시지를 우선 사용.
+        if snapshot_interrupts:
+            interrupt_val = getattr(snapshot_interrupts[0], "value", None)
+            ai_content = interrupt_val if isinstance(interrupt_val, str) else "PIN을 입력해 주세요."
+        else:
+            ai_msgs = [m for m in sv.get("messages", []) if isinstance(m, dict) and m.get("role") == "assistant"]
+            ai_content = ai_msgs[-1]["content"] if ai_msgs else "PIN을 입력해 주세요."
         intent = sv.get("intent", "STOCK")
+        session["pre_interrupt_count"] = len(session["messages"])
         session["messages"].append({"role": "assistant", "content": ai_content})
         _message_counter += 1
         return ok({

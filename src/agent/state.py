@@ -10,6 +10,10 @@ class ChatAgentState(TypedDict):
     intent: str              # ASSET / STOCK / TRANSFER / UNKNOWN
     current_task: str
 
+    # 가드
+    guard_passed: bool       # True: 서브그래프 진입 허용 / False: Save_Memory로 단락
+    guard_reason: str        # 정책 차단 사유 (로깅/디버깅용)
+
     # 자산관리
     rag_context: str
     analysis_data: dict
@@ -18,6 +22,7 @@ class ChatAgentState(TypedDict):
     want_apply: bool
     apply_confirmed: bool
     apply_pin_verified: bool
+    asset_action_type: str   # "apply" / "recommend" / "consult"
 
     # 증권
     stock_info: dict         # {code, name, quantity, price, order_type}
