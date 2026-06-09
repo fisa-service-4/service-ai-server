@@ -60,6 +60,11 @@ async def health_check():
     return {"status": "ok"}
 
 
+@app.get("/api/v1/ai/health")
+async def ai_health_check():
+    return {"status": "UP"}
+
+
 @app.post("/api/v1/admin/pipeline/run")
 async def trigger_pipeline(user_id: int = 1, max_step: int = 4):
     await run_pipeline(user_id, max_step=max_step)
