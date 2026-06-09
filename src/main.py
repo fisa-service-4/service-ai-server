@@ -62,7 +62,7 @@ async def health_check():
 
 @app.get("/api/v1/ai/health")
 async def ai_health_check():
-    return ok({"status": "UP"})
+    return {"status": "UP"}
 
 
 @app.post("/api/v1/admin/pipeline/run")
