@@ -84,9 +84,9 @@ async def asset_action_node(state: ChatAgentState) -> dict:
                 "messages": state["messages"] + [{"role": "assistant", "content": "아직 분석 데이터가 없어요. 잠시 후 다시 시도해 주세요."}],
             }
 
-        salary = int(recs.get("SALARY", {}).get("value") or 0)
-        investment = int(recs.get("INVESTMENT", {}).get("value") or 0)
-        emergency = int(recs.get("EMERGENCY", {}).get("value") or 0)
+        salary = int((recs.get("SALARY") or {}).get("value") or 0)
+        investment = int((recs.get("INVESTMENT") or {}).get("value") or 0)
+        emergency = int((recs.get("EMERGENCY") or {}).get("value") or 0)
         confirm_msg = (
             f"💰 분배 설정 확인\n"
             f"• 가상월급: {salary:,}원\n"
