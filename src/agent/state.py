@@ -22,6 +22,7 @@ class ChatAgentState(TypedDict):
     want_apply: bool
     apply_confirmed: bool
     apply_pin_verified: bool
+    asset_action_type: str   # "apply" / "recommend" / "consult"
 
     # 증권
     stock_info: dict         # {code, name, quantity, price, order_type}

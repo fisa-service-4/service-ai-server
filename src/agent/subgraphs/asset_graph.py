@@ -7,22 +7,35 @@ from src.agent.nodes.verifier import verifier_node
 from src.agent.nodes.executor import executor_node
 
 
+def _route_after_asset_action(state: ChatAgentState) -> str:
+    if state.get("pending_action"):
+        return "Verifier"
+    if state.get("asset_action_type") == "consult":
+        return "RAG_Consult"
+    return "done"
+
+
 def build_asset_graph():
     graph = StateGraph(ChatAgentState)
 
-    graph.add_node("RAG_Consult", rag_consult_node)
     graph.add_node("Asset_Action", asset_action_node)
+    graph.add_node("RAG_Consult", rag_consult_node)
     graph.add_node("Verifier", verifier_node)
     graph.add_node("Executor", executor_node)
 
-    graph.set_entry_point("RAG_Consult")
-    graph.add_edge("RAG_Consult", "Asset_Action")
+    graph.set_entry_point("Asset_Action")
 
     graph.add_conditional_edges(
         "Asset_Action",
-        lambda x: "action" if x.get("pending_action") else "done",
-        {"action": "Verifier", "done": END},
+        _route_after_asset_action,
+        {
+            "Verifier":   "Verifier",
+            "RAG_Consult": "RAG_Consult",
+            "done":       END,
+        },
     )
+
+    graph.add_edge("RAG_Consult", END)
 
     graph.add_conditional_edges(
         "Verifier",
