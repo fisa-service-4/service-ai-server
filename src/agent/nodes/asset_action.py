@@ -114,11 +114,11 @@ async def asset_action_node(state: ChatAgentState) -> dict:
                 "messages": state["messages"] + [{"role": "assistant", "content": "아직 분석 데이터가 없어요. 잠시 후 다시 시도해 주세요."}],
             }
 
-        salary = int(recs.get("SALARY", {}).get("value") or 0)
-        investment = int(recs.get("INVESTMENT", {}).get("value") or 0)
-        emergency = int(recs.get("EMERGENCY", {}).get("value") or 0)
-        salary_summary = recs.get("SALARY", {}).get("summary", "")
-        emergency_summary = recs.get("EMERGENCY", {}).get("summary", "")
+        salary = int((recs.get("SALARY") or {}).get("value") or 0)
+        investment = int((recs.get("INVESTMENT") or {}).get("value") or 0)
+        emergency = int((recs.get("EMERGENCY") or {}).get("value") or 0)
+        salary_summary = (recs.get("SALARY") or {}).get("summary", "")
+        emergency_summary = (recs.get("EMERGENCY") or {}).get("summary", "")
 
         recommendation = (
             f"💰 AI 분배 추천\n"
