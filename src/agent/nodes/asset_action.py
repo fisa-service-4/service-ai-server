@@ -70,7 +70,10 @@ async def asset_action_node(state: ChatAgentState) -> dict:
         return {"pending_action": {}, "asset_action_type": "consult"}
 
     sub_intent = await _classify_sub_intent(state["messages"])
-    user_id = int(state.get("user_id") or 1)
+    try:
+        user_id = int(state.get("user_id") or 1)
+    except ValueError:
+        user_id = 1
 
     if sub_intent == "apply":
         recs = await _fetch_recommendations(user_id)
