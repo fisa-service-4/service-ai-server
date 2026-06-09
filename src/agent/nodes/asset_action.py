@@ -23,6 +23,9 @@ async def _classify_sub_intent(messages: list) -> str:
             user_query = msg["content"]
             break
 
+    if not user_query:
+        return "consult"
+
     try:
         response = await asyncio.to_thread(
             client.chat.completions.create,
