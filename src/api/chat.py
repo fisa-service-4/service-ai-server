@@ -57,11 +57,12 @@ async def _get_or_init_thread(session_id: int, user_id: str, token: str) -> dict
             token=token,
             params={"size": 100},
         )
-        for m in resp.get("data", {}).get("content", []):
+        for m in (resp.get("data") or {}).get("content", []):
             role = "user" if m.get("role") == "USER" else "assistant"
             messages.append({"role": role, "content": m.get("content", "")})
     except Exception as e:
-        _log.warning("[Chat] 메시지 이력 로드 실패 (session_id=%s): %s", session_id, e)
+        _log.error("[Chat] 메시지 이력 로드 실패 (session_id=%s): %s", session_id, e)
+        raise HTTPException(status_code=503, detail="메시지 이력을 불러올 수 없습니다.")
 
     _chat_threads[session_id] = {
         "user_id": user_id,
