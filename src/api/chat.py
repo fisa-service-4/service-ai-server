@@ -46,6 +46,8 @@ def _extract_user_id(credentials: HTTPAuthorizationCredentials) -> str:
 async def _get_or_init_thread(session_id: int, user_id: str, token: str) -> dict:
     """로컬 스레드 캐시 반환. 없으면 백엔드에서 메시지 이력을 가져와 초기화."""
     if session_id in _chat_threads:
+        if _chat_threads[session_id]["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
         return _chat_threads[session_id]
 
     messages = []
@@ -231,6 +233,10 @@ async def delete_session(
     session_id: int,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ):
+    user_id = _extract_user_id(credentials)
+    cached = _chat_threads.get(session_id)
+    if cached is not None and cached["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
     try:
         resp = await backend.delete(
             f"/api/v1/ai/chat/sessions/{session_id}",
