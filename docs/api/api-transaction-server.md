@@ -201,7 +201,7 @@
 
 ## BANK-ACCOUNT-003. 계좌 잔액 조회
 
-**GET** `/accounts/{accountId}/balance`
+**GET** `/bank/accounts/{accountId}/balance`
 
 ### Response `200 OK`
 
@@ -223,7 +223,7 @@
 
 ## BANK-ACCOUNT-004. 거래내역 조회
 
-**GET** `/accounts/{accountId}/transactions`
+**GET** `/bank/accounts/{accountId}/transactions`
 
 ### Query Parameters
 
@@ -846,12 +846,12 @@
 
 ### Query Parameters
 
-| 이름     | 타입    | 필수 | 설명                                    |
-| -------- | ------- | ---- | --------------------------------------- |
-| fromDate | Date    | X    | 조회 시작일 (YYYY-MM-DD)                |
-| toDate   | Date    | X    | 조회 종료일 (YYYY-MM-DD)                |
-| page     | Integer | X    | 페이지 번호 (기본값: 0)                 |
-| size     | Integer | X    | 페이지 크기 (기본값: 20)                |
+| 이름     | 타입    | 필수 | 설명                     |
+| -------- | ------- | ---- | ------------------------ |
+| fromDate | Date    | X    | 조회 시작일 (YYYY-MM-DD) |
+| toDate   | Date    | X    | 조회 종료일 (YYYY-MM-DD) |
+| page     | Integer | X    | 페이지 번호 (기본값: 0)  |
+| size     | Integer | X    | 페이지 크기 (기본값: 20) |
 
 ### Response `200 OK`
 
