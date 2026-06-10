@@ -106,31 +106,6 @@ async def create_session(
         raise HTTPException(status_code=500, detail="세션을 생성할 수 없습니다.")
 
 
-@router.get("/sessions")
-async def get_sessions(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
-    try:
-        resp = await backend.get("/api/v1/ai/chat/sessions", token=credentials.credentials)
-        return ok(resp.get("data", {}))
-    except Exception as e:
-        _log.error("[Chat] 세션 목록 조회 실패: %s", e)
-        raise HTTPException(status_code=500, detail="세션 목록을 조회할 수 없습니다.")
-
-
-@router.get("/sessions/{session_id}/messages")
-async def get_messages(
-    session_id: int,
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-):
-    try:
-        resp = await backend.get(
-            f"/api/v1/ai/chat/sessions/{session_id}/messages",
-            token=credentials.credentials,
-        )
-        return ok(resp.get("data", {}))
-    except Exception as e:
-        _log.error("[Chat] 메시지 목록 조회 실패 (session_id=%s): %s", session_id, e)
-        raise HTTPException(status_code=500, detail="메시지 목록을 조회할 수 없습니다.")
-
 
 @router.post("/messages")
 async def send_message(
