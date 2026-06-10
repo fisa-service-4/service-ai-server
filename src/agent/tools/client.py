@@ -16,29 +16,42 @@ def _headers(token: str | None = None, extra: dict | None = None) -> dict:
     return headers
 
 
+def _parse(response: httpx.Response) -> dict:
+    if response.status_code == 204 or not response.content:
+        return {}
+    return response.json()
+
+
 async def get(path: str, token: str | None = None, params: dict | None = None) -> dict:
     async with httpx.AsyncClient(base_url=_BACKEND_URL, timeout=_TIMEOUT) as client:
         response = await client.get(path, headers=_headers(token), params=params)
         response.raise_for_status()
-        return response.json()
+        return _parse(response)
 
 
 async def post(path: str, token: str | None = None, body: dict | None = None, extra_headers: dict | None = None) -> dict:
     async with httpx.AsyncClient(base_url=_BACKEND_URL, timeout=_TIMEOUT) as client:
         response = await client.post(path, headers=_headers(token, extra_headers), json=body)
         response.raise_for_status()
-        return response.json()
+        return _parse(response)
 
 
 async def patch(path: str, token: str | None = None, body: dict | None = None) -> dict:
     async with httpx.AsyncClient(base_url=_BACKEND_URL, timeout=_TIMEOUT) as client:
         response = await client.patch(path, headers=_headers(token), json=body)
         response.raise_for_status()
-        return response.json()
+        return _parse(response)
+
+
+async def delete(path: str, token: str | None = None) -> dict:
+    async with httpx.AsyncClient(base_url=_BACKEND_URL, timeout=_TIMEOUT) as client:
+        response = await client.delete(path, headers=_headers(token))
+        response.raise_for_status()
+        return _parse(response)
 
 
 async def transaction_get(path: str, token: str | None = None, params: dict | None = None) -> dict:
     async with httpx.AsyncClient(base_url=_TRANSACTION_URL, timeout=_TIMEOUT) as client:
         response = await client.get(path, headers=_headers(token), params=params)
         response.raise_for_status()
-        return response.json()
+        return _parse(response)
