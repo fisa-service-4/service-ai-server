@@ -37,6 +37,13 @@ async def patch(path: str, token: str | None = None, body: dict | None = None) -
         return response.json()
 
 
+async def delete(path: str, token: str | None = None) -> dict:
+    async with httpx.AsyncClient(base_url=_BACKEND_URL, timeout=_TIMEOUT) as client:
+        response = await client.delete(path, headers=_headers(token))
+        response.raise_for_status()
+        return response.json()
+
+
 async def transaction_get(path: str, token: str | None = None, params: dict | None = None) -> dict:
     async with httpx.AsyncClient(base_url=_TRANSACTION_URL, timeout=_TIMEOUT) as client:
         response = await client.get(path, headers=_headers(token), params=params)
