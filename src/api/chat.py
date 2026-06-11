@@ -130,6 +130,7 @@ async def send_message(
     initial_state = {
         "user_id": user_id,
         "token": token,
+        "session_id": session_id,
         "messages": thread["messages"],
     }
 
@@ -155,6 +156,7 @@ async def send_message(
             initial_state = {
                 "user_id": user_id,
                 "token": token,
+                "session_id": session_id,
                 "messages": thread["messages"],
             }
             result = await chat_graph.ainvoke(initial_state, config=config)

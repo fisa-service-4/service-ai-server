@@ -4,6 +4,7 @@ import json
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
 from src.pipeline.db import get_analytics_pool
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_background
 
 _CLASSIFY_PROMPT = """사용자의 자산관리 요청 의도를 분류하세요.
 반드시 아래 영단어 중 하나만 출력하세요. 한국어, 설명, 다른 단어 금지.
@@ -16,7 +17,7 @@ consult   - 자산 현황, 소비 분석, 투자 성향 등 일반 상담/조회
 recommend"""
 
 
-async def _classify_sub_intent(messages: list) -> str:
+async def _classify_sub_intent(messages: list, user_id: str | None = None, session_id: int | None = None) -> str:
     user_query = ""
     for msg in reversed(messages):
         if msg.get("role") == "user":
@@ -38,6 +39,16 @@ async def _classify_sub_intent(messages: list) -> str:
             max_tokens=10,
         )
         raw = (response.choices[0].message.content or "").strip().lower()
+        run_in_background(
+            _insert_prompt_log(
+                user_id=user_id,
+                session_id=session_id,
+                prompt_type="ASSET_CLASSIFY",
+                system_prompt=_CLASSIFY_PROMPT,
+                user_prompt=user_query,
+                ai_response=raw,
+            )
+        )
         if "apply" in raw or "적용" in raw or "설정" in raw or "반영" in raw:
             return "apply"
         if "recommend" in raw or "추천" in raw:
@@ -68,11 +79,16 @@ async def _fetch_recommendations(user_id: int) -> dict | None:
         return None
 
 
+@log_node("Asset_Action")
 async def asset_action_node(state: ChatAgentState) -> dict:
     if state.get("intent") != "ASSET":
         return {"pending_action": {}, "asset_action_type": "consult"}
 
-    sub_intent = await _classify_sub_intent(state["messages"])
+    sub_intent = await _classify_sub_intent(
+        state["messages"],
+        user_id=state.get("user_id"),
+        session_id=state.get("session_id"),
+    )
     try:
         user_id = int(state.get("user_id") or 1)
     except ValueError:

@@ -6,6 +6,7 @@ class ChatAgentState(TypedDict):
     # 공통
     user_id: str
     token: str
+    session_id: int
     messages: list
     intent: str              # ASSET / STOCK / TRANSFER / UNKNOWN
     current_task: str

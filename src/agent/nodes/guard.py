@@ -2,12 +2,14 @@ import logging
 
 from src.agent.state import ChatAgentState
 from src.agent.policy import FINANCIAL_POLICIES
+from src.agent.nodes.log_utils import log_node
 
 logger = logging.getLogger(__name__)
 
 _FINANCIAL_INTENTS = {"STOCK", "TRANSFER", "ASSET"}
 
 
+@log_node("Guard")
 async def guard_node(state: ChatAgentState) -> dict:
     intent = state.get("intent", "UNKNOWN")
     logger.info("[Guard] intent=%s 정책 체크 시작", intent)

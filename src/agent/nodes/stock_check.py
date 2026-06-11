@@ -2,10 +2,12 @@ import logging
 
 from src.agent.state import ChatAgentState
 from src.agent.tools.stock import get_stock_price, get_securities_balance, get_stocks_accounts, search_stock, get_holdings
+from src.agent.nodes.log_utils import log_node
 
 logger = logging.getLogger(__name__)
 
 
+@log_node("Stock_Check")
 async def stock_check_node(state: ChatAgentState) -> dict:
     stock_info = state.get("stock_info", {})
     stock_code = stock_info.get("code")

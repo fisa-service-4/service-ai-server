@@ -3,6 +3,7 @@ import json
 
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_background
 
 _SYSTEM_PROMPT = """사용자의 메시지에서 주식 관련 의도를 파악하세요.
 
@@ -41,6 +42,7 @@ has_order_intent 판단 기준 (명시적 실행 의도):
 예시5: "주문할게" → has_order_intent: true"""
 
 
+@log_node("Stock_Extract")
 async def stock_extract_node(state: ChatAgentState) -> dict:
     response = await asyncio.to_thread(
         client.chat.completions.create,
@@ -52,8 +54,21 @@ async def stock_extract_node(state: ChatAgentState) -> dict:
         temperature=0,
     )
 
+    raw_response = (response.choices[0].message.content or "").strip()
+    user_query = state["messages"][-1]["content"] if state["messages"] else ""
+    run_in_background(
+        _insert_prompt_log(
+            user_id=state.get("user_id"),
+            session_id=state.get("session_id"),
+            prompt_type="STOCK_EXTRACT",
+            system_prompt=_SYSTEM_PROMPT,
+            user_prompt=user_query,
+            ai_response=raw_response,
+        )
+    )
+
     try:
-        raw = (response.choices[0].message.content or "").strip()
+        raw = raw_response
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
