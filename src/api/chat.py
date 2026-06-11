@@ -13,16 +13,12 @@ try:
 except ImportError:
     _GraphInterrupt = None
 
-router = APIRouter(prefix="/api/v1/ai/chat", tags=["AI Chat"])
+router = APIRouter(prefix="/api/v1/ai", tags=["AI Chat"])
 _bearer = HTTPBearer()
 _log = logging.getLogger(__name__)
 
 # LangGraph 대화 컨텍스트 로컬 캐시 (에페머럴 — 서버 재시작 시 초기화, 백엔드 DB가 원본)
 _chat_threads: dict[int, dict] = {}
-
-
-class CreateSessionRequest(BaseModel):
-    title: str | None = None
 
 
 class SendMessageRequest(BaseModel):
@@ -87,30 +83,12 @@ async def _save_message(
             payload["intent"] = intent
         if action_type:
             payload["actionType"] = action_type
-        await backend.post("/api/v1/ai/chat/messages", token=token, body=payload)
+        await backend.post("/api/v1/ai/chat/messages/record", token=token, body=payload)
     except Exception as e:
         _log.warning("[Chat] 메시지 DB 저장 실패 (session_id=%s, role=%s): %s", session_id, role, e)
 
 
-@router.post("/sessions", status_code=201)
-async def create_session(
-    body: CreateSessionRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-):
-    try:
-        resp = await backend.post(
-            "/api/v1/ai/chat/sessions",
-            token=credentials.credentials,
-            body={"title": body.title or ""},
-        )
-        return ok(resp.get("data", {}))
-    except Exception as e:
-        _log.error("[Chat] 세션 생성 실패: %s", e)
-        raise HTTPException(status_code=500, detail="세션을 생성할 수 없습니다.")
-
-
-
-@router.post("/messages")
+@router.post("/chat/run")
 async def send_message(
     body: SendMessageRequest,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
@@ -229,24 +207,3 @@ async def send_message(
         "content": ai_content,
         "actionRequired": action_required,
     })
-
-
-@router.delete("/sessions/{session_id}")
-async def delete_session(
-    session_id: int,
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
-):
-    user_id = _extract_user_id(credentials)
-    cached = _chat_threads.get(session_id)
-    if cached is not None and cached["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="접근 권한이 없습니다.")
-    try:
-        resp = await backend.delete(
-            f"/api/v1/ai/chat/sessions/{session_id}",
-            token=credentials.credentials,
-        )
-        _chat_threads.pop(session_id, None)
-        return ok(resp.get("data", {}))
-    except Exception as e:
-        _log.error("[Chat] 세션 종료 실패: %s", e)
-        raise HTTPException(status_code=500, detail="세션을 종료할 수 없습니다.")
