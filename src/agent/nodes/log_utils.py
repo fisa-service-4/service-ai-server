@@ -42,7 +42,7 @@ async def _insert_langgraph_log(
                 execution_time_ms,
             )
     except Exception:
-        logger.debug("[LogUtils] langgraph_execution_log 저장 실패 node=%s", node_name)
+        logger.exception("[LogUtils] langgraph_execution_log 저장 실패 node=%s", node_name)
 
 
 async def _insert_prompt_log(
