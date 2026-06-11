@@ -4,6 +4,7 @@ import json
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
 from src.agent.tools.transfer import get_bank_accounts
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log
 
 _BASE_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
 다음 JSON 형식으로만 응답하세요:
@@ -25,6 +26,7 @@ has_transfer_intent 판단 기준 (명시적 실행 의도):
 은행 코드 참고: 우리은행=020, 신한은행=088, KB국민은행=004, NH농협=011, 하나은행=081, 카카오뱅크=090, 토스뱅크=092"""
 
 
+@log_node("Transfer_Extract")
 async def transfer_extract_node(state: ChatAgentState) -> dict:
     token = state.get("token")
 
@@ -56,8 +58,21 @@ async def transfer_extract_node(state: ChatAgentState) -> dict:
         temperature=0,
     )
 
+    raw_response = (response.choices[0].message.content or "").strip()
+    user_query = state["messages"][-1]["content"] if state["messages"] else ""
+    asyncio.create_task(
+        _insert_prompt_log(
+            user_id=state.get("user_id"),
+            session_id=state.get("session_id"),
+            prompt_type="TRANSFER_EXTRACT",
+            system_prompt=_BASE_PROMPT,
+            user_prompt=user_query,
+            ai_response=raw_response,
+        )
+    )
+
     try:
-        raw = (response.choices[0].message.content or "").strip()
+        raw = raw_response
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):

@@ -4,10 +4,12 @@ from langgraph.types import interrupt
 
 from src.agent.state import ChatAgentState
 from src.agent.tools.auth import verify_pin
+from src.agent.nodes.log_utils import log_node
 
 logger = logging.getLogger(__name__)
 
 
+@log_node("Verifier")
 async def verifier_node(state: ChatAgentState) -> dict:
     # 직전 노드(Transfer_Check / Stock_Check / Asset_Action)가 추가한 확인 메시지를
     # interrupt value 로 전달 → 부모 그래프 snapshot.interrupts[0].value 로 읽을 수 있음

@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 _analytics_pool: asyncpg.Pool | None = None
 _vector_pool: asyncpg.Pool | None = None
+_log_pool: asyncpg.Pool | None = None
 
 
 async def get_analytics_pool() -> asyncpg.Pool:
@@ -39,14 +40,32 @@ async def get_vector_pool() -> asyncpg.Pool:
     return _vector_pool
 
 
+async def get_log_pool() -> asyncpg.Pool:
+    global _log_pool
+    if _log_pool is None:
+        _log_pool = await asyncpg.create_pool(
+            host=os.getenv("LOG_DB_HOST", "localhost"),
+            port=int(os.getenv("LOG_DB_PORT", "5434")),
+            user=os.getenv("LOG_DB_USER", "admin"),
+            password=os.getenv("LOG_DB_PASSWORD", "1234"),
+            database=os.getenv("LOG_DB_NAME", "finance_log"),
+            min_size=2,
+            max_size=10,
+        )
+    return _log_pool
+
+
 async def close_pool():
-    global _analytics_pool, _vector_pool
+    global _analytics_pool, _vector_pool, _log_pool
     if _analytics_pool:
         await _analytics_pool.close()
         _analytics_pool = None
     if _vector_pool:
         await _vector_pool.close()
         _vector_pool = None
+    if _log_pool:
+        await _log_pool.close()
+        _log_pool = None
 
 
 async def create_tables():
@@ -182,6 +201,47 @@ async def create_tables():
                 vector_key         VARCHAR(255) UNIQUE,
                 embedding          vector(1024),
                 indexed_at         TIMESTAMP NOT NULL
+            );
+        """)
+
+    log_pool = await get_log_pool()
+    async with log_pool.acquire() as conn:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_prompt_log (
+                prompt_log_id  BIGSERIAL PRIMARY KEY,
+                user_id        BIGINT,
+                session_id     BIGINT,
+                prompt_type    VARCHAR(50)  NOT NULL,
+                system_prompt  TEXT,
+                user_prompt    TEXT,
+                ai_response    TEXT,
+                created_at     TIMESTAMP    NOT NULL DEFAULT NOW()
+            );
+        """)
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ai_action_log (
+                ai_action_log_id  BIGSERIAL PRIMARY KEY,
+                user_id           BIGINT       NOT NULL,
+                action_type       VARCHAR(50)  NOT NULL,
+                action_payload    JSONB,
+                approved_yn       BOOLEAN      NOT NULL,
+                executed_yn       BOOLEAN      NOT NULL,
+                result_message    VARCHAR(500),
+                created_at        TIMESTAMP    NOT NULL DEFAULT NOW()
+            );
+        """)
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS langgraph_execution_log (
+                execution_log_id  BIGSERIAL PRIMARY KEY,
+                session_id        BIGINT,
+                graph_name        VARCHAR(100) NOT NULL,
+                node_name         VARCHAR(100) NOT NULL,
+                execution_order   INT          NOT NULL DEFAULT 0,
+                execution_result  VARCHAR(100),
+                execution_time_ms BIGINT,
+                executed_at       TIMESTAMP    NOT NULL
             );
         """)
 

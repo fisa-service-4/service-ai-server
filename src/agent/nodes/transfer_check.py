@@ -1,5 +1,6 @@
 from src.agent.state import ChatAgentState
 from src.agent.tools.transfer import get_bank_accounts
+from src.agent.nodes.log_utils import log_node
 
 _BANK_NAMES = {
     "020": "우리은행", "088": "신한은행", "004": "KB국민은행", "011": "NH농협",
@@ -8,6 +9,7 @@ _BANK_NAMES = {
 }
 
 
+@log_node("Transfer_Check")
 async def transfer_check_node(state: ChatAgentState) -> dict:
     token = state.get("token")
     from_account_id = state.get("from_account_id", "")

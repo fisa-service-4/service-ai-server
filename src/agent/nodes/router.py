@@ -1,5 +1,8 @@
+import asyncio
+
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log
 
 
 _SYSTEM_PROMPT = """You are a financial assistant router.
@@ -12,10 +15,12 @@ Classify the user's message into one of these intents:
 Respond with only one word: ASSET, STOCK, TRANSFER, or UNKNOWN."""
 
 
-def router_node(state: ChatAgentState) -> dict:
+@log_node("Router")
+async def router_node(state: ChatAgentState) -> dict:
     last_message = state["messages"][-1]["content"]
 
-    response = client.chat.completions.create(
+    response = await asyncio.to_thread(
+        client.chat.completions.create,
         model=MODEL,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -27,5 +32,16 @@ def router_node(state: ChatAgentState) -> dict:
     intent = (response.choices[0].message.content or "").strip().upper()
     if intent not in {"ASSET", "STOCK", "TRANSFER"}:
         intent = "UNKNOWN"
+
+    asyncio.create_task(
+        _insert_prompt_log(
+            user_id=state.get("user_id"),
+            session_id=state.get("session_id"),
+            prompt_type="ROUTER",
+            system_prompt=_SYSTEM_PROMPT,
+            user_prompt=last_message,
+            ai_response=intent,
+        )
+    )
 
     return {"intent": intent}

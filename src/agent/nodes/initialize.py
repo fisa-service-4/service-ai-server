@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from src.agent.state import ChatAgentState
 from src.pipeline.db import get_analytics_pool
+from src.agent.nodes.log_utils import log_node
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ def _row_to_dict(row) -> dict:
     return {k: _to_float(v) for k, v in dict(row).items()}
 
 
+@log_node("Initialize")
 async def initialize_node(state: ChatAgentState) -> dict:
     user_id = state.get("user_id")
     analysis_data = {}
