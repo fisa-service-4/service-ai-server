@@ -252,7 +252,7 @@ async def create_tables():
                 execution_order   INT          NOT NULL DEFAULT 0,
                 execution_result  VARCHAR(100),
                 execution_time_ms BIGINT,
-                executed_at       TIMESTAMP    NOT NULL
+                executed_at       TIMESTAMP    NOT NULL DEFAULT NOW()
             );
         """)
 
