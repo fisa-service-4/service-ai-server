@@ -1,3 +1,4 @@
+import asyncio
 import os
 import logging
 
@@ -9,49 +10,59 @@ _analytics_pool: asyncpg.Pool | None = None
 _vector_pool: asyncpg.Pool | None = None
 _log_pool: asyncpg.Pool | None = None
 
+_analytics_pool_lock = asyncio.Lock()
+_vector_pool_lock = asyncio.Lock()
+_log_pool_lock = asyncio.Lock()
+
 
 async def get_analytics_pool() -> asyncpg.Pool:
     global _analytics_pool
     if _analytics_pool is None:
-        _analytics_pool = await asyncpg.create_pool(
-            host=os.getenv("ANALYTICS_DB_HOST", "localhost"),
-            port=int(os.getenv("ANALYTICS_DB_PORT", "5433")),
-            user=os.getenv("ANALYTICS_DB_USER", "admin"),
-            password=os.getenv("ANALYTICS_DB_PASSWORD", "1234"),
-            database=os.getenv("ANALYTICS_DB_NAME", "finance_analytics"),
-            min_size=2,
-            max_size=10,
-        )
+        async with _analytics_pool_lock:
+            if _analytics_pool is None:
+                _analytics_pool = await asyncpg.create_pool(
+                    host=os.getenv("ANALYTICS_DB_HOST", "localhost"),
+                    port=int(os.getenv("ANALYTICS_DB_PORT", "5433")),
+                    user=os.getenv("ANALYTICS_DB_USER", "admin"),
+                    password=os.getenv("ANALYTICS_DB_PASSWORD", "1234"),
+                    database=os.getenv("ANALYTICS_DB_NAME", "finance_analytics"),
+                    min_size=2,
+                    max_size=10,
+                )
     return _analytics_pool
 
 
 async def get_vector_pool() -> asyncpg.Pool:
     global _vector_pool
     if _vector_pool is None:
-        _vector_pool = await asyncpg.create_pool(
-            host=os.getenv("VECTOR_DB_HOST", "localhost"),
-            port=int(os.getenv("VECTOR_DB_PORT", "5435")),
-            user=os.getenv("VECTOR_DB_USER", "admin"),
-            password=os.getenv("VECTOR_DB_PASSWORD", "1234"),
-            database=os.getenv("VECTOR_DB_NAME", "finance_vector"),
-            min_size=2,
-            max_size=10,
-        )
+        async with _vector_pool_lock:
+            if _vector_pool is None:
+                _vector_pool = await asyncpg.create_pool(
+                    host=os.getenv("VECTOR_DB_HOST", "localhost"),
+                    port=int(os.getenv("VECTOR_DB_PORT", "5435")),
+                    user=os.getenv("VECTOR_DB_USER", "admin"),
+                    password=os.getenv("VECTOR_DB_PASSWORD", "1234"),
+                    database=os.getenv("VECTOR_DB_NAME", "finance_vector"),
+                    min_size=2,
+                    max_size=10,
+                )
     return _vector_pool
 
 
 async def get_log_pool() -> asyncpg.Pool:
     global _log_pool
     if _log_pool is None:
-        _log_pool = await asyncpg.create_pool(
-            host=os.getenv("LOG_DB_HOST", "localhost"),
-            port=int(os.getenv("LOG_DB_PORT", "5434")),
-            user=os.getenv("LOG_DB_USER", "admin"),
-            password=os.getenv("LOG_DB_PASSWORD", "1234"),
-            database=os.getenv("LOG_DB_NAME", "finance_log"),
-            min_size=2,
-            max_size=10,
-        )
+        async with _log_pool_lock:
+            if _log_pool is None:
+                _log_pool = await asyncpg.create_pool(
+                    host=os.getenv("LOG_DB_HOST", "localhost"),
+                    port=int(os.getenv("LOG_DB_PORT", "5434")),
+                    user=os.getenv("LOG_DB_USER", "admin"),
+                    password=os.getenv("LOG_DB_PASSWORD", "1234"),
+                    database=os.getenv("LOG_DB_NAME", "finance_log"),
+                    min_size=2,
+                    max_size=10,
+                )
     return _log_pool
 
 
