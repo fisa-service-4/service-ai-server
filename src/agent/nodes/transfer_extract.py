@@ -60,7 +60,7 @@ async def transfer_extract_node(state: ChatAgentState) -> dict:
 
     raw_response = (response.choices[0].message.content or "").strip()
     user_query = state["messages"][-1]["content"] if state["messages"] else ""
-    asyncio.create_task(
+    run_in_background(
         _insert_prompt_log(
             user_id=state.get("user_id"),
             session_id=state.get("session_id"),
