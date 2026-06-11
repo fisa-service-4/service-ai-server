@@ -4,7 +4,7 @@ from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
 from src.agent.tools.rag import search_rag_context
 from src.agent.tools.asset import get_virtual_salary_setting
-from src.agent.nodes.log_utils import log_node, _insert_prompt_log
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_background
 
 _SYSTEM_PROMPT = """당신은 프리랜서를 위한 AI 금융 어시스턴트입니다.
 사용자의 자산 관리, 소비 패턴, 투자 분석, 금융 상담 질문에 친절하고 전문적으로 답변하세요.
@@ -71,7 +71,7 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
     except Exception:
         ai_content = "죄송합니다. 해당 질문에는 답변하기 어렵습니다. 다른 방식으로 질문해 주시거나, 계좌 조회, 이체, 주식 주문 등 도움이 필요하신 부분을 알려주세요."
 
-    asyncio.create_task(
+    run_in_background(
         _insert_prompt_log(
             user_id=state.get("user_id"),
             session_id=state.get("session_id"),

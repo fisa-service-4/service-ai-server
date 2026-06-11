@@ -4,7 +4,7 @@ import json
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
 from src.agent.tools.transfer import get_bank_accounts
-from src.agent.nodes.log_utils import log_node, _insert_prompt_log
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_background
 
 _BASE_PROMPT = """사용자의 메시지에서 이체 정보를 추출하세요.
 다음 JSON 형식으로만 응답하세요:

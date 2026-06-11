@@ -2,7 +2,7 @@ import asyncio
 
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
-from src.agent.nodes.log_utils import log_node, _insert_prompt_log
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_background
 
 
 _SYSTEM_PROMPT = """You are a financial assistant router.
@@ -33,7 +33,7 @@ async def router_node(state: ChatAgentState) -> dict:
     if intent not in {"ASSET", "STOCK", "TRANSFER"}:
         intent = "UNKNOWN"
 
-    asyncio.create_task(
+    run_in_background(
         _insert_prompt_log(
             user_id=state.get("user_id"),
             session_id=state.get("session_id"),

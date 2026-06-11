@@ -4,7 +4,7 @@ import json
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
 from src.pipeline.db import get_analytics_pool
-from src.agent.nodes.log_utils import log_node, _insert_prompt_log
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_background
 
 _CLASSIFY_PROMPT = """사용자의 자산관리 요청 의도를 분류하세요.
 반드시 아래 영단어 중 하나만 출력하세요. 한국어, 설명, 다른 단어 금지.
@@ -39,7 +39,7 @@ async def _classify_sub_intent(messages: list, user_id: str | None = None, sessi
             max_tokens=10,
         )
         raw = (response.choices[0].message.content or "").strip().lower()
-        asyncio.create_task(
+        run_in_background(
             _insert_prompt_log(
                 user_id=user_id,
                 session_id=session_id,

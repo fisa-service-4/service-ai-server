@@ -6,7 +6,7 @@ from src.agent.tools.stock import execute_buy_order, execute_sell_order
 from src.agent.tools.transfer import execute_transfer
 from src.agent.tools.asset import update_salary_setting
 from src.agent.nodes.transfer_check import _BANK_NAMES
-from src.agent.nodes.log_utils import log_node, _insert_action_log
+from src.agent.nodes.log_utils import log_node, _insert_action_log, run_in_background
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def _log_action(
         action_type = _ACTION_TYPE_MAP.get(intent, intent)
 
     payload = _build_action_payload(intent, state, pending_action)
-    asyncio.create_task(
+    run_in_background(
         _insert_action_log(
             user_id=state.get("user_id"),
             action_type=action_type,

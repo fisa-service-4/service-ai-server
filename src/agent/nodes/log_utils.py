@@ -9,6 +9,14 @@ from src.pipeline.db import get_log_pool
 
 logger = logging.getLogger(__name__)
 
+_background_tasks: set = set()
+
+
+def run_in_background(coro) -> None:
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
 
 async def _insert_langgraph_log(
     session_id: int | None,
@@ -111,40 +119,54 @@ def log_node(node_name: str, graph_name: str = "chat_graph") -> Callable:
             @functools.wraps(fn)
             async def async_wrapper(state, *args, **kwargs):
                 start = time.monotonic()
-                result = await fn(state, *args, **kwargs)
-                elapsed_ms = int((time.monotonic() - start) * 1000)
-                session_id = state.get("session_id")
-                asyncio.create_task(
-                    _insert_langgraph_log(
-                        session_id=session_id,
-                        graph_name=graph_name,
-                        node_name=node_name,
-                        execution_time_ms=elapsed_ms,
-                        execution_result="SUCCESS",
-                    )
-                )
-                return result
-            return async_wrapper
-        else:
-            @functools.wraps(fn)
-            def sync_wrapper(state, *args, **kwargs):
-                start = time.monotonic()
-                result = fn(state, *args, **kwargs)
-                elapsed_ms = int((time.monotonic() - start) * 1000)
-                session_id = state.get("session_id")
+                execution_result = "SUCCESS"
                 try:
-                    loop = asyncio.get_running_loop()
-                    loop.create_task(
+                    result = await fn(state, *args, **kwargs)
+                    return result
+                except Exception:
+                    execution_result = "FAILURE"
+                    raise
+                finally:
+                    elapsed_ms = int((time.monotonic() - start) * 1000)
+                    session_id = state.get("session_id")
+                    run_in_background(
                         _insert_langgraph_log(
                             session_id=session_id,
                             graph_name=graph_name,
                             node_name=node_name,
                             execution_time_ms=elapsed_ms,
-                            execution_result="SUCCESS",
+                            execution_result=execution_result,
                         )
                     )
-                except RuntimeError:
-                    pass
-                return result
+            return async_wrapper
+        else:
+            @functools.wraps(fn)
+            def sync_wrapper(state, *args, **kwargs):
+                start = time.monotonic()
+                execution_result = "SUCCESS"
+                try:
+                    result = fn(state, *args, **kwargs)
+                    return result
+                except Exception:
+                    execution_result = "FAILURE"
+                    raise
+                finally:
+                    elapsed_ms = int((time.monotonic() - start) * 1000)
+                    session_id = state.get("session_id")
+                    try:
+                        loop = asyncio.get_running_loop()
+                        task = loop.create_task(
+                            _insert_langgraph_log(
+                                session_id=session_id,
+                                graph_name=graph_name,
+                                node_name=node_name,
+                                execution_time_ms=elapsed_ms,
+                                execution_result=execution_result,
+                            )
+                        )
+                        _background_tasks.add(task)
+                        task.add_done_callback(_background_tasks.discard)
+                    except RuntimeError:
+                        pass
             return sync_wrapper
     return decorator

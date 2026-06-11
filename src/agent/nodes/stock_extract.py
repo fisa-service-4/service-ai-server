@@ -3,7 +3,7 @@ import json
 
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
-from src.agent.nodes.log_utils import log_node, _insert_prompt_log
+from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_background
 
 _SYSTEM_PROMPT = """사용자의 메시지에서 주식 관련 의도를 파악하세요.
 
