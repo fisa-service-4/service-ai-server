@@ -6,7 +6,7 @@ from typing import Optional
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import BackgroundTasks, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -65,10 +65,10 @@ async def ai_health_check():
     return {"status": "UP"}
 
 
-@app.post("/api/v1/admin/pipeline/run")
-async def trigger_pipeline(user_id: int = 1, max_step: int = 4):
-    await run_pipeline(user_id, max_step=max_step)
-    return {"status": "ok", "user_id": user_id, "max_step": max_step}
+@app.post("/api/v1/ai/admin/pipeline/run")
+async def trigger_pipeline(background_tasks: BackgroundTasks, user_id: int = 1):
+    background_tasks.add_task(run_pipeline, user_id)
+    return ok({"status": "accepted", "user_id": user_id})
 
 
 @app.post("/api/v1/ai/virtual-salary/recommend")
