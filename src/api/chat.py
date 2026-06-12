@@ -1,5 +1,6 @@
 import jwt
 import logging
+from cachetools import TTLCache
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -18,7 +19,8 @@ _bearer = HTTPBearer()
 _log = logging.getLogger(__name__)
 
 # LangGraph 대화 컨텍스트 로컬 캐시 (에페머럴 — 서버 재시작 시 초기화, 백엔드 DB가 원본)
-_chat_threads: dict[int, dict] = {}
+# TTL 1시간: 세션 삭제 후 백엔드와 동기화 없이도 자동 만료
+_chat_threads: TTLCache = TTLCache(maxsize=1000, ttl=3600)
 
 
 class SendMessageRequest(BaseModel):
