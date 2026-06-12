@@ -9,3 +9,4 @@ pydantic
 httpx
 PyJWT
 google-genai
+cachetools
