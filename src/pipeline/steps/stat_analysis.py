@@ -79,7 +79,14 @@ async def run(user_id: int):
                      freelancer_income, salary_income, investment_income, etc_income,
                      total_income, income_growth_rate, analyzed_at)
                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (user_id, year_month) DO UPDATE SET
+                    freelancer_income  = EXCLUDED.freelancer_income,
+                    salary_income      = EXCLUDED.salary_income,
+                    investment_income  = EXCLUDED.investment_income,
+                    etc_income         = EXCLUDED.etc_income,
+                    total_income       = EXCLUDED.total_income,
+                    income_growth_rate = EXCLUDED.income_growth_rate,
+                    analyzed_at        = EXCLUDED.analyzed_at
                 """,
                 user_id, ym,
                 inc.get("freelancer_income") or None,
@@ -105,7 +112,19 @@ async def run(user_id: int):
                      subscription_expense, etc_expense,
                      total_expense, expense_growth_rate, analyzed_at)
                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (user_id, year_month) DO UPDATE SET
+                    food_expense           = EXCLUDED.food_expense,
+                    transport_expense      = EXCLUDED.transport_expense,
+                    shopping_expense       = EXCLUDED.shopping_expense,
+                    housing_expense        = EXCLUDED.housing_expense,
+                    communication_expense  = EXCLUDED.communication_expense,
+                    medical_expense        = EXCLUDED.medical_expense,
+                    investment_expense     = EXCLUDED.investment_expense,
+                    subscription_expense   = EXCLUDED.subscription_expense,
+                    etc_expense            = EXCLUDED.etc_expense,
+                    total_expense          = EXCLUDED.total_expense,
+                    expense_growth_rate    = EXCLUDED.expense_growth_rate,
+                    analyzed_at            = EXCLUDED.analyzed_at
                 """,
                 user_id, ym,
                 exp.get("food_expense") or None,
