@@ -136,7 +136,7 @@ async def run(user_id: int):
             user_id,
         )
         for chunk, vector in zip(chunks, vectors):
-            vector_key = f"{user_id}:{chunk['vector_type']}:{year_month}"
+            vector_key = f"{user_id}:{chunk['vector_type']}:{year_month}:{chunk['reference_id']}"
             await vector_conn.execute(
                 "DELETE FROM analysis_ai_vector_metadata WHERE vector_key = $1",
                 vector_key,
