@@ -13,6 +13,7 @@ _log_pool: asyncpg.Pool | None = None
 _analytics_pool_lock = asyncio.Lock()
 _vector_pool_lock = asyncio.Lock()
 _log_pool_lock = asyncio.Lock()
+_operational_pool: asyncpg.Pool | None = None
 
 
 async def get_analytics_pool() -> asyncpg.Pool:
@@ -68,6 +69,28 @@ async def get_log_pool() -> asyncpg.Pool:
 
 async def close_pool():
     global _analytics_pool, _vector_pool, _log_pool
+async def get_operational_pool() -> asyncpg.Pool:
+    global _operational_pool
+    if _operational_pool is None:
+        schema = os.getenv("OPERATIONAL_DB_SCHEMA")
+        kwargs = {}
+        if schema:
+            kwargs["server_settings"] = {"search_path": schema}
+        _operational_pool = await asyncpg.create_pool(
+            host=os.getenv("OPERATIONAL_DB_HOST", "localhost"),
+            port=int(os.getenv("OPERATIONAL_DB_PORT", "5432")),
+            user=os.getenv("OPERATIONAL_DB_USER", "admin"),
+            password=os.getenv("OPERATIONAL_DB_PASSWORD", "1234"),
+            database=os.getenv("OPERATIONAL_DB_NAME", "finance_operational"),
+            min_size=2,
+            max_size=10,
+            **kwargs,
+        )
+    return _operational_pool
+
+
+async def close_pool():
+    global _analytics_pool, _vector_pool, _operational_pool
     if _analytics_pool:
         await _analytics_pool.close()
         _analytics_pool = None
@@ -77,6 +100,9 @@ async def close_pool():
     if _log_pool:
         await _log_pool.close()
         _log_pool = None
+    if _operational_pool:
+        await _operational_pool.close()
+        _operational_pool = None
 
 
 async def create_tables():
