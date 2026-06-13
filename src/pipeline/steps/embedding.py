@@ -121,13 +121,22 @@ async def run(user_id: int):
         logger.warning("[Embedding] 임베딩할 분석 데이터 없음 - user_id=%s", user_id)
         return
 
+    now = datetime.now()
+    year_month = now.strftime("%Y-%m")
+
+    for chunk in chunks:
+        chunk["chunk_text"] = f"[{year_month}] {chunk['chunk_text']}"
+
     texts = [c["chunk_text"] for c in chunks]
     vectors = _embed(texts)
 
-    now = datetime.now()
     async with vector_pool.acquire() as vector_conn:
+        await vector_conn.execute(
+            "DELETE FROM analysis_ai_vector_metadata WHERE user_id = $1 AND indexed_at < NOW() - INTERVAL '3 months'",
+            user_id,
+        )
         for chunk, vector in zip(chunks, vectors):
-            vector_key = f"{user_id}:{chunk['vector_type']}:{chunk['reference_id']}"
+            vector_key = f"{user_id}:{chunk['vector_type']}:{year_month}"
             await vector_conn.execute(
                 "DELETE FROM analysis_ai_vector_metadata WHERE vector_key = $1",
                 vector_key,

@@ -45,7 +45,7 @@ def _embed_query(text: str) -> list[float]:
     return result.embeddings[0].values
 
 
-async def search_rag_context(user_id: str, query: str, top_k: int = 3) -> str:
+async def search_rag_context(user_id: str, query: str, top_k: int = 5) -> str:
     try:
         uid = int(user_id)
     except (ValueError, TypeError):
@@ -61,6 +61,7 @@ async def search_rag_context(user_id: str, query: str, top_k: int = 3) -> str:
                    1 - (embedding <=> $1::vector) AS similarity
             FROM analysis_ai_vector_metadata
             WHERE user_id = $2
+              AND indexed_at > NOW() - INTERVAL '3 months'
             ORDER BY embedding <=> $1::vector
             LIMIT $3
             """,
