@@ -138,6 +138,10 @@ async def send_message(
                 checkpointer = chat_graph.checkpointer
                 if hasattr(checkpointer, "storage"):
                     checkpointer.storage.pop(old_thread_id, None)
+                if hasattr(checkpointer, "writes"):
+                    for key in list(checkpointer.writes.keys()):
+                        if key[0] == old_thread_id:
+                            del checkpointer.writes[key]
             except Exception:
                 pass
             thread["thread_version"] = thread_version + 1
