@@ -90,7 +90,7 @@ async def _save_message(
         _log.warning("[Chat] 메시지 DB 저장 실패 (session_id=%s, role=%s): %s", session_id, role, e)
 
 
-@router.post("/chat/messages")
+@router.post("/chat/run")
 async def send_message(
     body: SendMessageRequest,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
