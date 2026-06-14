@@ -27,6 +27,7 @@ class SendMessageRequest(BaseModel):
     sessionId: int
     message: str
     isPin: bool = False
+    accountId: int | None = None
 
 
 def _extract_user_id(credentials: HTTPAuthorizationCredentials) -> str:
@@ -112,6 +113,7 @@ async def send_message(
         "token": token,
         "session_id": session_id,
         "messages": thread["messages"],
+        "account_id": body.accountId,
     }
 
     is_interrupted = False
@@ -138,6 +140,7 @@ async def send_message(
                 "token": token,
                 "session_id": session_id,
                 "messages": thread["messages"],
+                "account_id": body.accountId,
             }
             result = await chat_graph.ainvoke(initial_state, config=config)
         else:

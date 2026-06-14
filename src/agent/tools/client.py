@@ -29,9 +29,9 @@ async def get(path: str, token: str | None = None, params: dict | None = None) -
         return _parse(response)
 
 
-async def post(path: str, token: str | None = None, body: dict | None = None, extra_headers: dict | None = None) -> dict:
+async def post(path: str, token: str | None = None, body: dict | None = None, extra_headers: dict | None = None, params: dict | None = None) -> dict:
     async with httpx.AsyncClient(base_url=_BACKEND_URL, timeout=_TIMEOUT) as client:
-        response = await client.post(path, headers=_headers(token, extra_headers), json=body)
+        response = await client.post(path, headers=_headers(token, extra_headers), json=body, params=params)
         response.raise_for_status()
         return _parse(response)
 

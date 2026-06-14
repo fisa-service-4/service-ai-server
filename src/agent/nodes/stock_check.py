@@ -13,10 +13,11 @@ async def stock_check_node(state: ChatAgentState) -> dict:
     stock_code = stock_info.get("code")
     stock_name = stock_info.get("name")
     token = state.get("token")
+    account_id = state.get("account_id")
 
     if stock_info.get("is_holdings"):
         try:
-            holdings = await get_holdings(token=token)
+            holdings = await get_holdings(account_id=account_id, token=token)
             logger.info("[StockCheck] 보유종목 조회 결과: %s", holdings)
         except Exception as e:
             logger.error("[StockCheck] 보유종목 조회 실패: %s", e)
@@ -103,7 +104,7 @@ async def stock_check_node(state: ChatAgentState) -> dict:
                 logger.info("[StockCheck] 주문용 코드 검색: %s → %s", stock_name, stock_code)
 
         price_data = await get_stock_price(stock_code, token=token) if stock_code else {}
-        balance_data = await get_securities_balance(token=token)
+        balance_data = await get_securities_balance(account_id=account_id, token=token)
     except Exception as e:
         logger.error("[StockCheck] 주문 정보 조회 실패: %s", e)
         price_data = {}
