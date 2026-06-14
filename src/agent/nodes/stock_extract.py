@@ -111,7 +111,7 @@ async def stock_extract_node(state: ChatAgentState) -> dict:
     question = extracted.get("question")
     fields_ok = not extracted.get("missing") and question is None
     # 주문 실행은 명시적 의도가 있고 필드가 모두 채워진 경우만
-    info_complete = extracted.get("is_inquiry", False) or (has_order_intent and fields_ok)
+    info_complete = extracted.get("is_inquiry", False) or extracted.get("is_holdings", False) or (has_order_intent and fields_ok)
 
     updated_messages = state["messages"]
     if question:
