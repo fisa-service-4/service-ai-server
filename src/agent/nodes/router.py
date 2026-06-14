@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
@@ -29,9 +30,19 @@ async def router_node(state: ChatAgentState) -> dict:
         temperature=0,
     )
 
-    intent = (response.choices[0].message.content or "").strip().upper()
-    if intent not in {"ASSET", "STOCK", "TRANSFER"}:
-        intent = "UNKNOWN"
+    content = (response.choices[0].message.content or "").strip()
+    # Gemini may prepend explanation text; try last word first
+    last_word = re.split(r"\s+", content)[-1].upper().strip(".,!?:") if content else ""
+    if last_word in {"ASSET", "STOCK", "TRANSFER"}:
+        intent = last_word
+    else:
+        # Fallback: search for any valid intent keyword in the full response
+        content_upper = content.upper()
+        found = next(
+            (c for c in ["STOCK", "TRANSFER", "ASSET"] if re.search(rf"\b{c}\b", content_upper)),
+            None,
+        )
+        intent = found if found else "UNKNOWN"
 
     run_in_background(
         _insert_prompt_log(
