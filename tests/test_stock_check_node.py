@@ -3,13 +3,14 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 
-def _make_state(stock_info: dict, messages: list | None = None) -> dict:
+def _make_state(stock_info: dict, messages: list | None = None, account_id: int = 2) -> dict:
     return {
         "user_id": "1",
         "session_id": 10,
         "token": "test-token",
         "messages": messages or [{"role": "user", "content": "테스트"}],
         "stock_info": stock_info,
+        "account_id": account_id,
     }
 
 
@@ -25,10 +26,7 @@ class TestStockCheckNode:
         holdings = [
             {"stockName": "삼성전자", "quantity": 10, "profitRate": 3.5, "evaluationAmount": 820000},
         ]
-        with (
-            patch("src.agent.nodes.stock_check.get_stocks_accounts", AsyncMock(return_value=[{"accountId": 1}])),
-            patch("src.agent.nodes.stock_check.get_holdings", AsyncMock(return_value=holdings)),
-        ):
+        with patch("src.agent.nodes.stock_check.get_holdings", AsyncMock(return_value=holdings)):
             from src.agent.nodes.stock_check import stock_check_node
             result = await stock_check_node(_make_state({"is_holdings": True}))
 
@@ -38,19 +36,14 @@ class TestStockCheckNode:
         assert "보유 종목" in last_msg
 
     async def test_holdings_empty_returns_no_holdings_message(self):
-        with (
-            patch("src.agent.nodes.stock_check.get_stocks_accounts", AsyncMock(return_value=[{"accountId": 1}])),
-            patch("src.agent.nodes.stock_check.get_holdings", AsyncMock(return_value=[])),
-        ):
+        with patch("src.agent.nodes.stock_check.get_holdings", AsyncMock(return_value=[])):
             from src.agent.nodes.stock_check import stock_check_node
             result = await stock_check_node(_make_state({"is_holdings": True}))
 
         assert "없습니다" in result["messages"][-1]["content"]
 
     async def test_holdings_api_error_returns_error_message(self):
-        with (
-            patch("src.agent.nodes.stock_check.get_stocks_accounts", AsyncMock(side_effect=Exception("API 오류"))),
-        ):
+        with patch("src.agent.nodes.stock_check.get_holdings", AsyncMock(side_effect=Exception("API 오류"))):
             from src.agent.nodes.stock_check import stock_check_node
             result = await stock_check_node(_make_state({"is_holdings": True}))
 
@@ -103,7 +96,6 @@ class TestStockCheckNode:
         balance_data = {"cashBalance": 1000000}
         with (
             patch("src.agent.nodes.stock_check.get_stock_price", AsyncMock(return_value=price_data)),
-            patch("src.agent.nodes.stock_check.get_stocks_accounts", AsyncMock(return_value=[{"accountId": 2}])),
             patch("src.agent.nodes.stock_check.get_securities_balance", AsyncMock(return_value=balance_data)),
         ):
             from src.agent.nodes.stock_check import stock_check_node
@@ -122,7 +114,6 @@ class TestStockCheckNode:
         assert "주문 확인" in msg
         assert "PIN" in msg
         assert result["info_complete"] is True
-        assert result["stock_info"]["account_id"] == 2
 
     async def test_order_no_code_no_name_asks_for_stock(self):
         from src.agent.nodes.stock_check import stock_check_node
