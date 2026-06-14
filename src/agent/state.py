@@ -26,6 +26,7 @@ class ChatAgentState(TypedDict):
     asset_action_type: str   # "apply" / "recommend" / "consult"
 
     # 증권
+    account_id: int
     stock_info: dict         # {code, name, quantity, price, order_type}
     pending_action: dict
     info_complete: bool
