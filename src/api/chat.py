@@ -133,6 +133,17 @@ async def send_message(
             if pre_count is not None:
                 new_user_msg = thread["messages"][-1]
                 thread["messages"] = thread["messages"][:pre_count] + [new_user_msg]
+            old_thread_id = f"{session_id}_{thread_version}"
+            try:
+                checkpointer = chat_graph.checkpointer
+                if hasattr(checkpointer, "storage"):
+                    checkpointer.storage.pop(old_thread_id, None)
+                if hasattr(checkpointer, "writes"):
+                    for key in list(checkpointer.writes.keys()):
+                        if key[0] == old_thread_id:
+                            del checkpointer.writes[key]
+            except Exception:
+                pass
             thread["thread_version"] = thread_version + 1
             config = {"configurable": {"thread_id": f"{session_id}_{thread['thread_version']}"}}
             initial_state = {
