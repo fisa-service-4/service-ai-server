@@ -55,7 +55,7 @@ async def _fetch_latest_analysis(conn, user_id: int) -> list[dict]:
 
     row = await conn.fetchrow(
         """
-        SELECT pattern_id, consumption_type, summary
+        SELECT pattern_id, consumption_type, summary, analyzed_at
         FROM analysis_consumption_pattern
         WHERE user_id = $1
         ORDER BY analyzed_at DESC
@@ -68,11 +68,12 @@ async def _fetch_latest_analysis(conn, user_id: int) -> list[dict]:
             "vector_type": "CONSUMPTION_PATTERN",
             "reference_id": row["pattern_id"],
             "chunk_text": f"소비 성향: {row['consumption_type']}\n{row['summary']}",
+            "data_date": row["analyzed_at"],
         })
 
     row = await conn.fetchrow(
         """
-        SELECT briefing_history_id, briefing_summary
+        SELECT briefing_history_id, briefing_summary, created_at
         FROM analysis_ai_briefing_history
         WHERE user_id = $1
         ORDER BY created_at DESC
@@ -85,11 +86,12 @@ async def _fetch_latest_analysis(conn, user_id: int) -> list[dict]:
             "vector_type": "BRIEFING",
             "reference_id": row["briefing_history_id"],
             "chunk_text": row["briefing_summary"],
+            "data_date": row["created_at"],
         })
 
     rows = await conn.fetch(
         """
-        SELECT recommendation_id, recommendation_type, recommendation_content
+        SELECT recommendation_id, recommendation_type, recommendation_content, created_at
         FROM analysis_ai_recommendation
         WHERE user_id = $1
         ORDER BY created_at DESC
@@ -105,6 +107,7 @@ async def _fetch_latest_analysis(conn, user_id: int) -> list[dict]:
                 "vector_type": f"RECOMMENDATION_{r['recommendation_type']}",
                 "reference_id": r["recommendation_id"],
                 "chunk_text": summary,
+                "data_date": r["created_at"],
             })
 
     return chunks
@@ -121,13 +124,23 @@ async def run(user_id: int):
         logger.warning("[Embedding] 임베딩할 분석 데이터 없음 - user_id=%s", user_id)
         return
 
+    now = datetime.now()
+
+    for chunk in chunks:
+        year_month = chunk["data_date"].strftime("%Y-%m")
+        chunk["year_month"] = year_month
+        chunk["chunk_text"] = f"[{year_month}] {chunk['chunk_text']}"
+
     texts = [c["chunk_text"] for c in chunks]
     vectors = _embed(texts)
 
-    now = datetime.now()
     async with vector_pool.acquire() as vector_conn:
+        await vector_conn.execute(
+            "DELETE FROM analysis_ai_vector_metadata WHERE user_id = $1 AND indexed_at < NOW() - INTERVAL '3 months'",
+            user_id,
+        )
         for chunk, vector in zip(chunks, vectors):
-            vector_key = f"{user_id}:{chunk['vector_type']}:{chunk['reference_id']}"
+            vector_key = f"{user_id}:{chunk['vector_type']}:{chunk['year_month']}:{chunk['reference_id']}"
             await vector_conn.execute(
                 "DELETE FROM analysis_ai_vector_metadata WHERE vector_key = $1",
                 vector_key,
