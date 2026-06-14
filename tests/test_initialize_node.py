@@ -12,14 +12,6 @@ def _make_state(user_id: str = "1") -> dict:
     }
 
 
-def _make_mock_pool(rows: dict):
-    conn = AsyncMock()
-    conn.fetchrow = AsyncMock(side_effect=lambda query, uid: rows.get(query.split()[1], None))
-    pool = AsyncMock()
-    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
-    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
-    return pool, conn
-
 
 @pytest.fixture(autouse=True)
 def patch_background(monkeypatch):
@@ -57,27 +49,24 @@ class TestInitializeNode:
         assert result["want_apply"] is False
 
     async def test_loads_analysis_data_from_db(self):
-        income_row = MagicMock()
-        income_row.__iter__ = MagicMock(return_value=iter([
-            ("year_month", "2026-05"),
-            ("total_income", Decimal("3000000")),
-        ]))
-        income_row.items = MagicMock(return_value=[
-            ("year_month", "2026-05"),
-            ("total_income", Decimal("3000000")),
-        ])
+        income_row = {
+            "year_month": "2026-05",
+            "total_income": Decimal("3000000"),
+        }
 
-        pool = AsyncMock()
+        pool = MagicMock()
         conn = AsyncMock()
-        conn.fetchrow = AsyncMock(return_value=None)
+        conn.fetchrow = AsyncMock(side_effect=[income_row, None, None, None])
         pool.acquire.return_value.__aenter__ = AsyncMock(return_value=conn)
         pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("src.agent.nodes.initialize.get_analytics_pool", return_value=pool):
+        with patch("src.agent.nodes.initialize.get_analytics_pool", new=AsyncMock(return_value=pool)):
             from src.agent.nodes.initialize import initialize_node
             result = await initialize_node(_make_state("42"))
 
-        assert result["analysis_data"] is not None
+        assert "monthly_income" in result["analysis_data"]
+        assert result["analysis_data"]["monthly_income"]["year_month"] == "2026-05"
+        assert result["analysis_data"]["monthly_income"]["total_income"] == pytest.approx(3000000.0)
 
     async def test_returns_empty_analysis_on_db_error(self):
         pool = AsyncMock()
