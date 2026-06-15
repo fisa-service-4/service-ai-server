@@ -18,6 +18,9 @@ Respond with only one word: ASSET, STOCK, TRANSFER, or UNKNOWN."""
 
 @log_node("Router")
 async def router_node(state: ChatAgentState) -> dict:
+    if not state.get("info_complete") and (state.get("stock_info") or {}).get("has_order_intent"):
+        return {"intent": "STOCK"}
+
     last_message = state["messages"][-1]["content"]
 
     response = await asyncio.to_thread(

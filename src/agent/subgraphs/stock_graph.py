@@ -21,13 +21,14 @@ def build_stock_graph():
     graph.add_conditional_edges(
         "Stock_Check",
         lambda x: (
-            "done" if (
-                (x.get("stock_info") or {}).get("is_inquiry")
-                or (x.get("stock_info") or {}).get("is_holdings")
+            "ready" if (
+                x.get("info_complete")
+                and not (x.get("stock_info") or {}).get("is_inquiry")
+                and not (x.get("stock_info") or {}).get("is_holdings")
             )
-            else ("ready" if x.get("info_complete") else "more")
+            else "done"
         ),
-        {"done": END, "ready": "Verifier", "more": "Stock_Extract"},
+        {"done": END, "ready": "Verifier"},
     )
 
     graph.add_conditional_edges(
