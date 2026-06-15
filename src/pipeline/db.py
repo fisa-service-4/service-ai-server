@@ -28,6 +28,7 @@ async def get_analytics_pool() -> asyncpg.Pool:
                     database=os.getenv("ANALYTICS_DB_NAME", "finance_analytics"),
                     min_size=2,
                     max_size=10,
+                    server_settings={"search_path": "analytics"},
                 )
     return _analytics_pool
 
@@ -45,6 +46,7 @@ async def get_vector_pool() -> asyncpg.Pool:
                     database=os.getenv("VECTOR_DB_NAME", "finance_vector"),
                     min_size=2,
                     max_size=10,
+                    server_settings={"search_path": "vector"},
                 )
     return _vector_pool
 
@@ -62,6 +64,7 @@ async def get_log_pool() -> asyncpg.Pool:
                     database=os.getenv("LOG_DB_NAME", "finance_log"),
                     min_size=2,
                     max_size=10,
+                    server_settings={"search_path": "log"},
                 )
     return _log_pool
 
@@ -187,7 +190,7 @@ async def create_tables():
 
     vector_pool = await get_vector_pool()
     async with vector_pool.acquire() as conn:
-        await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+        # await conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
 
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS common_knowledge (

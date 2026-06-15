@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - chore#78-onpremise-app-yml
 
 permissions:
   contents: read
