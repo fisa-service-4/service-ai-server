@@ -14,6 +14,12 @@ async def stock_check_node(state: ChatAgentState) -> dict:
     stock_name = stock_info.get("name")
     token = state.get("token")
     account_id = state.get("account_id")
+    if not account_id:
+        try:
+            accounts = await get_stocks_accounts(token=token)
+            account_id = accounts[0].get("accountId") if accounts else None
+        except Exception:
+            account_id = None
 
     if stock_info.get("is_holdings"):
         try:
