@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - feat/aws
 
 permissions:
   contents: read
@@ -49,4 +50,4 @@ jobs:
             -o StrictHostKeyChecking=no \
             -p ${{ secrets.BASTION_PORT }} \
             ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
-            "ssh -i ~/team04-jooho.pem ubuntu@172.21.33.245 \"cd ~/infra && bash scripts/deploy-service-ai.sh\""
+            "ssh -i ~/team04-jooho.pem ubuntu@172.21.33.245 \"cd ~/infra/scripts/test && bash deploy-service-ai.sh\""
