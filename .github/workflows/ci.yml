@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - feat/aws
 
 permissions:
   contents: read
