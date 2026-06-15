@@ -45,6 +45,7 @@ async def get_vector_pool() -> asyncpg.Pool:
                     database=os.getenv("VECTOR_DB_NAME", "finance_vector"),
                     min_size=2,
                     max_size=10,
+                    server_settings={"search_path": "public"},
                 )
     return _vector_pool
 
