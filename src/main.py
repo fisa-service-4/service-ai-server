@@ -6,6 +6,8 @@ from typing import Optional
 from dotenv import load_dotenv
 load_dotenv()
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import BackgroundTasks, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -15,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 from src.api.chat import router as chat_router
 from src.api.response import ok, fail
 from src.pipeline.db import close_pool, create_tables, get_analytics_pool
-from src.pipeline.runner import run_pipeline
+from src.pipeline.runner import run_pipeline, run_pipeline_all_users
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,18 @@ class RecommendationRequest(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await create_tables()
+
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        run_pipeline_all_users,
+        CronTrigger(day=1, hour=0, minute=0),
+    )
+    scheduler.start()
+    logger.info("[Scheduler] 월별 파이프라인 스케줄러 시작 (매월 1일 00:00)")
+
     yield
+
+    scheduler.shutdown()
     await close_pool()
 
 

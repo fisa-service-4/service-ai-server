@@ -10,3 +10,4 @@ httpx
 PyJWT
 google-genai
 cachetools
+apscheduler
