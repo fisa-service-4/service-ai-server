@@ -8,7 +8,7 @@ from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_backg
 
 _SYSTEM_PROMPT = """You are a financial assistant router.
 Classify the user's message into one of these intents:
-- ASSET: asset/spending analysis, financial advice, investment comparisons or recommendations (e.g. "삼성전자 살까 SK하이닉스 살까", "어떤 주식이 좋아?"), distribution settings, applying or confirming recommendations (적용, 설정 적용, 반영, 그대로 해줘)
+- ASSET: asset/spending analysis, financial advice, virtual salary (가상월급) distribution recommendations or settings (e.g. "가상월급 분배 추천해줘", "분배 비율 어떻게 해야 해", "얼마씩 나눠야 해", "월급 배분 추천", "비상금 얼마가 적당해"), investment comparisons or advice (e.g. "삼성전자 살까 SK하이닉스 살까", "어떤 주식이 좋아?"), applying or confirming AI recommendations (e.g. "적용할래", "그대로 해줘", "설정 반영해줘")
 - STOCK: clear buy/sell orders (e.g. "삼성전자 10주 매수해줘", "팔아줘") OR specific stock price inquiries (e.g. "삼성전자 현재가", "주가 얼마야", "시세 알려줘") OR holdings/portfolio queries (e.g. "보유종목", "내 주식 보여줘", "보유 현황", "어떤 주식 갖고 있어")
 - TRANSFER: money transfers between accounts
 - UNKNOWN: anything else
@@ -18,6 +18,9 @@ Respond with only one word: ASSET, STOCK, TRANSFER, or UNKNOWN."""
 
 @log_node("Router")
 async def router_node(state: ChatAgentState) -> dict:
+    if not state.get("info_complete") and (state.get("stock_info") or {}).get("has_order_intent"):
+        return {"intent": "STOCK"}
+
     last_message = state["messages"][-1]["content"]
 
     response = await asyncio.to_thread(

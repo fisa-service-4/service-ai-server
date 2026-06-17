@@ -9,9 +9,12 @@ from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_backg
 _CLASSIFY_PROMPT = """사용자의 자산관리 요청 의도를 분류하세요.
 반드시 아래 영단어 중 하나만 출력하세요. 한국어, 설명, 다른 단어 금지.
 
-apply     - AI 추천 분배 설정을 실제로 적용/설정/반영하겠다는 경우 (예: 적용할래, 그대로 해줘, 설정해줘)
-recommend - AI 분배 추천을 받고 싶은 경우 (예: 추천해줘, 얼마가 적당해, 분배 어떻게 해야 해)
-consult   - 자산 현황, 소비 분석, 투자 성향 등 일반 상담/조회 (예: 이번달 지출 어때, 내 자산 알려줘)
+recommend - 가상월급/분배 비율에 대한 AI 추천을 원하는 경우
+            (예: 가상월급 분배 추천해줘, 분배 비율 어떻게 해야 해, 얼마씩 나눠야 해, 비상금 얼마가 적당해, 투자금 얼마로 설정할까, 월급 배분 추천해줘)
+apply     - AI가 추천한 분배 설정을 실제로 적용/반영하겠다는 경우
+            (예: 적용할래, 그대로 해줘, 설정해줘, 반영해줘)
+consult   - 현재 자산 현황 조회, 소비 분석, 투자 성향 등 일반 상담
+            (예: 이번달 지출 어때, 내 자산 알려줘, 소비 패턴 분석해줘)
 
 출력 예시:
 recommend"""
@@ -26,6 +29,11 @@ async def _classify_sub_intent(messages: list, user_id: str | None = None, sessi
 
     if not user_query:
         return "consult"
+
+    # recommend/consult 구분이 앱 도메인 특화 개념이라 LLM이 오분류하는 패턴 보정.
+    # "추천" + 분배/금융 맥락 조합은 명확하게 recommend로 처리.
+    if "추천" in user_query and any(kw in user_query for kw in ["분배", "가상월급", "비상금", "투자금", "월급"]):
+        return "recommend"
 
     try:
         response = await asyncio.to_thread(
@@ -81,7 +89,7 @@ async def _fetch_recommendations(user_id: int) -> dict | None:
 
 @log_node("Asset_Action")
 async def asset_action_node(state: ChatAgentState) -> dict:
-    if state.get("intent") != "ASSET":
+    if state.get("intent") not in ("ASSET", "UNKNOWN"):
         return {"pending_action": {}, "asset_action_type": "consult"}
 
     sub_intent = await _classify_sub_intent(

@@ -54,7 +54,7 @@ async def _get_or_init_thread(session_id: int, user_id: str, token: str) -> dict
         resp = await backend.get(
             f"/api/v1/ai/chat/sessions/{session_id}/messages",
             token=token,
-            params={"size": 100},
+            params={"size": 100, "sort": "messageId,asc"},
         )
         for m in (resp.get("data") or {}).get("content", []):
             role = "user" if m.get("role") == "USER" else "assistant"

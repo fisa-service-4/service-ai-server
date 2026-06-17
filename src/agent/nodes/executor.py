@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from src.agent.state import ChatAgentState
-from src.agent.tools.stock import execute_buy_order, execute_sell_order
+from src.agent.tools.stock import execute_buy_order, execute_sell_order, get_stocks_accounts
 from src.agent.tools.transfer import execute_transfer
 from src.agent.tools.asset import update_salary_setting
 from src.agent.nodes.transfer_check import _BANK_NAMES
@@ -80,6 +80,12 @@ async def executor_node(state: ChatAgentState) -> dict:
     pending_action = state.get("pending_action", {})
     token = state.get("token")
     account_id = state.get("account_id")
+    if intent == "STOCK" and not account_id:
+        try:
+            accounts = await get_stocks_accounts(token=token)
+            account_id = accounts[0].get("accountId") if accounts else None
+        except Exception:
+            account_id = None
 
     try:
         if intent == "STOCK":
