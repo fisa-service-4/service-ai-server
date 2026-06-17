@@ -78,54 +78,63 @@ transaction-server (:8083)
 
 ## 주요 기능
 
-### 1. LLM 자유도 제한 — 고정 파이프라인 설계
+### 1. 고정 파이프라인 설계 — LLM 역할 최소화
 
-일반적인 LangGraph Agent는 LLM이 자유롭게 tool을 선택·실행합니다.
-금융권에서는 LLM의 hallucination으로 인한 오실행이 치명적이므로, **LLM 역할을 의도 분류와 정보 추출로만 제한**하고 금융 액션 실행 경로는 코드 레벨에서 고정했습니다.
-
-```
-[LLM 담당]                    [코드로 고정]
-의도 분류 (Router)     →      Guard → 서브그래프 → Executor
-정보 추출 (Extract)
-```
-
-### 2. LangGraph interrupt() 기반 PIN 인증 플로우
-
-주문·이체 실행 전 `interrupt()`로 그래프를 일시 중단하고 PIN 입력을 대기합니다.
-PIN 입력 후 `Command(resume=pin)`으로 이전 state를 완전히 복구하여 실행을 재개합니다.
-PIN 검증은 Backend `/auth/pin/verify` API에 위임하여 인증 책임을 분리했습니다.
+LLM이 자유롭게 도구를 선택·실행하는 일반적인 Agent 방식은 금융 실행 오류 시 치명적입니다. 이 서버는 **LLM 역할을 의도 분류(Router)와 정보 추출(Extract)로만 한정**하고, 금융 액션의 실행 경로는 코드 레벨에서 고정해 hallucination이 실제 금융 거래에 영향을 줄 수 없도록 설계했습니다.
 
 ```
-주문/이체 확인 메시지
-        ↓
-   interrupt() ← 그래프 일시 중단
+[LLM]                       [코드 고정]
+Router (의도 분류)    →     Guard → 서브그래프 선택
+Extract (정보 추출)   →     Verifier → Executor
+```
+
+### 2. LangGraph interrupt() 기반 PIN 인증
+
+주문·이체·분배 설정 실행 직전 Verifier 노드에서 `interrupt()`로 그래프를 일시 중단합니다. 직전 노드(Stock_Check / Transfer_Check / Asset_Action)가 생성한 거래 확인 메시지를 interrupt value로 전달해 Frontend가 PIN 입력 UI를 표시하고, 사용자가 PIN을 입력하면 `Command(resume=pin)`으로 이전 State를 완전히 복구해 실행을 재개합니다. PIN 검증은 Backend `/auth/pin/verify` API에 위임해 인증 책임을 분리했습니다.
+
+```
+Stock_Check / Transfer_Check / Asset_Action
+        ↓ (거래 확인 메시지 생성)
+   interrupt(confirm_msg) ← 그래프 일시 중단
         ↓ (Frontend: PIN 입력)
   Command(resume=pin)
         ↓
-   verify_pin() → Backend
+   verify_pin() → Backend /auth/pin/verify
         ↓ (matched: true)
-     Executor → 실행
+     Executor → 금융 액션 실행
 ```
 
 ### 3. 의도별 서브그래프 분리
 
-ASSET / STOCK / TRANSFER를 독립 서브그래프로 분리하여 각 도메인 로직이 서로 영향을 주지 않습니다.
-Guard 노드를 통해 중앙 정책 제어가 가능한 구조입니다.
+사용자 입력을 ASSET / STOCK / TRANSFER 세 도메인으로 분류하고 각각 독립 서브그래프로 처리합니다. 도메인 간 로직이 서로 영향을 주지 않으며, Guard 노드가 금융 정책을 중앙에서 검사해 세 서브그래프 모두에 일관되게 적용합니다.
 
-### 4. RAG + 개인화 데이터 결합
+| 서브그래프 | 주요 역할 |
+|------------|---------|
+| Asset_Flow | 자산 현황 조회, RAG 기반 금융 상담, 분배 설정 적용 |
+| Stock_Flow | 종목·수량 추출, 시세 조회, 매수/매도 주문 실행 |
+| Transfer_Flow | 계좌·금액 추출, 잔액 확인, 계좌 이체 실행 |
 
-pgvector 기반 Vector DB에 사용자의 개인 분석 데이터(3개월 이내)와 금융 공통 지식을 함께 저장합니다.
-질문 임베딩으로 유사도 검색 후 LLM 프롬프트에 컨텍스트로 제공해 개인화된 금융 상담을 구현합니다.
+### 4. 개인화 컨텍스트 사전 로드 + RAG 결합
 
-### 5. 멀티턴 대화 + TTL 캐시
+Initialize 노드가 매 대화 시작 시 Analytics DB에서 **월별 수입/지출 통계, 소비 패턴, 자산 스냅샷**을 로드해 State에 미리 담아둡니다. RAG_Consult 노드는 여기에 pgvector 유사도 검색 결과(개인 분석 텍스트 + 금융 공통 지식)를 결합해 LLM 프롬프트를 구성합니다. 분석 데이터는 파이프라인이 사전 생성하므로 채팅 응답 지연 없이 즉시 활용됩니다.
 
-세션별 메시지 이력을 로컬 TTLCache(1시간)에 관리하고, `thread_version`으로 interrupt 폐기 및 재시작을 처리합니다.
-interrupt 발생 시 `pre_interrupt_count`를 기록해 PIN 입력 전후 메시지를 정확히 구분합니다.
+```
+[Analytics DB] 월별수입/지출, 소비패턴, 자산스냅샷
+        ↓ Initialize 노드 (대화 시작 시 로드)
+  ChatAgentState.analysis_data
+        +
+[Vector DB] 유사도 검색 (BGE-M3 임베딩)
+        ↓ RAG_Consult 노드
+    LLM 프롬프트 (개인화 컨텍스트 포함)
+```
 
-### 6. 포괄적 로깅 (비동기 백그라운드)
+### 5. 멀티턴 대화 — interrupt 폐기 처리
 
-모든 노드에 `@log_node` 데코레이터를 적용해 실행 시간·성공/실패를 기록합니다.
-LLM 프롬프트/응답, 금융 액션 이력을 별도 테이블에 저장하며, asyncio 백그라운드로 실행해 응답 지연 없이 처리합니다.
+세션별 메시지 이력을 로컬 TTLCache(1시간)로 관리합니다. interrupt 대기 중 사용자가 새 메시지를 보내면 기존 interrupt 스냅샷을 MemorySaver에서 삭제하고 `thread_version`을 증가시켜 새 스레드로 재시작합니다. `pre_interrupt_count`로 interrupt 이전 메시지 경계를 기록해 재시작 시 이력이 정확히 잘립니다.
+
+### 6. 비동기 백그라운드 로깅
+
+모든 노드에 `@log_node` 데코레이터를 적용해 실행 시간·성공/실패를 기록합니다. LLM 프롬프트/응답, 금융 액션 이력도 별도 테이블에 저장하며, `asyncio.create_task()`로 백그라운드 처리해 로깅이 응답 지연에 영향을 주지 않습니다.
 
 | 테이블 | 저장 내용 |
 |--------|---------|
@@ -152,7 +161,7 @@ src/
 │   │   ├── rag_consult.py      # RAG 기반 금융 상담
 │   │   ├── verifier.py         # PIN 인증 (interrupt)
 │   │   ├── executor.py         # 금융 액션 실행
-│   │   └── log_utils.py        # 로깅 유틸리티
+│   │   └── log_utils.py        # 노드 실행 로깅 데코레이터
 │   ├── subgraphs/              # 의도별 서브그래프
 │   │   ├── asset_graph.py
 │   │   ├── stock_graph.py
@@ -196,8 +205,6 @@ Initialize → Router → Guard
           ↓              ↓              ↓
      Asset_Flow     Stock_Flow   Transfer_Flow
           └──────────────┴──────────────┘
-                         ↓
-                    Save_Memory
                          ↓
                        [END]
 ```
