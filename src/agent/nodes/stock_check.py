@@ -14,12 +14,15 @@ async def stock_check_node(state: ChatAgentState) -> dict:
     stock_name = stock_info.get("name")
     token = state.get("token")
     account_id = state.get("account_id")
+
     if not account_id:
         try:
             accounts = await get_stocks_accounts(token=token)
-            account_id = accounts[0].get("accountId") if accounts else None
-        except Exception:
-            account_id = None
+            if accounts:
+                account_id = accounts[0].get("accountId")
+                logger.info("[StockCheck] 증권 계좌 자동 조회: account_id=%s", account_id)
+        except Exception as e:
+            logger.error("[StockCheck] 증권 계좌 조회 실패: %s", e)
 
     if stock_info.get("is_holdings"):
         try:
@@ -94,9 +97,17 @@ async def stock_check_node(state: ChatAgentState) -> dict:
             "info_complete": True,
         }
 
+    if not account_id:
+        msg = "연결된 증권 계좌를 찾을 수 없습니다."
+        return {
+            "info_complete": False,
+            "messages": state["messages"] + [{"role": "assistant", "content": msg}],
+        }
+
     if not stock_code and not stock_name:
         msg = "어떤 종목을 주문할까요? 종목명이나 종목코드를 알려주세요."
         return {
+            "account_id": account_id,
             "info_complete": False,
             "messages": state["messages"] + [{"role": "assistant", "content": msg}],
         }
@@ -186,6 +197,7 @@ async def stock_check_node(state: ChatAgentState) -> dict:
     updated_messages = state["messages"] + [{"role": "assistant", "content": confirm_msg}]
 
     return {
+        "account_id": account_id,
         "stock_info": updated_stock_info,
         "info_complete": True,
         "messages": updated_messages,
