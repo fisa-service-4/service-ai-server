@@ -53,40 +53,9 @@
 
 ---
 
-## RECONCILIATION-001. 정합성 검증 실행
+> 정합성 검증은 매일 자정(00:00)에 스케줄러로 자동 실행됩니다. 수동 실행 API는 제공하지 않습니다.
 
-**POST** `/reconciliation/run`
-
-### Request Body
-
-```json
-{
-  "targetDate": "2026-05-17"
-}
-```
-
-| 필드       | 타입 | 필수 | 설명                            |
-| ---------- | ---- | ---- | ------------------------------- |
-| targetDate | Date | X    | 검증 대상 날짜 (미입력 시 전일) |
-
-### Response `202 Accepted`
-
-```json
-{
-  "success": true,
-  "data": {
-    "reconciliationId": 101,
-    "status": "STARTED"
-  },
-  "meta": {
-    "traceId": "uuid"
-  }
-}
-```
-
----
-
-## RECONCILIATION-002. 정합성 검증 결과 조회
+## RECONCILIATION-001. 정합성 검증 결과 조회
 
 **GET** `/reconciliation/result`
 

@@ -249,14 +249,16 @@ AI 채팅, 알림, 가상 월급 등의 데이터를 저장합니다. :contentRe
 
 > 계약 입금 매칭 정보를 저장합니다.
 
-| 컬럼명              | 데이터 타입 | 설명         | Null 허용 | PK / FK |
-| ------------------- | ----------- | ------------ | --------- | ------- |
-| matching_id         | BIGINT      | 매칭 ID      | NO        | PK      |
-| contract_id         | BIGINT      | 계약 ID      | NO        | FK      |
-| bank_transaction_id | BIGINT      | 은행 거래 ID | NO        | -       |
-| matching_status     | ENUM        | 매칭 상태    | NO        | -       |
-| matched_by          | ENUM        | 매칭 주체    | NO        | -       |
-| matched_at          | TIMESTAMP   | 매칭 시각    | YES       | -       |
+| 컬럼명              | 데이터 타입   | 설명                               | Null 허용 | PK / FK |
+| ------------------- | ------------- | ---------------------------------- | --------- | ------- |
+| matching_id         | BIGINT        | 매칭 ID                            | NO        | PK      |
+| contract_id         | BIGINT        | 계약 ID                            | NO        | FK      |
+| bank_transaction_id | BIGINT        | 은행 거래 ID                       | YES       | -       |
+| matching_status     | VARCHAR(30)   | 매칭 상태                          | NO        | -       |
+| matched_by          | VARCHAR(30)   | 매칭 주체                          | NO        | -       |
+| matched_at          | TIMESTAMP     | 매칭 시각                          | YES       | -       |
+| transaction_amount  | DECIMAL(18,2) | 매칭된 입금 금액                   | YES       | -       |
+| distributed_yn      | BOOLEAN       | 자동 분배 완료 여부 (기본값 false) | NO        | -       |
 
 ---
 
