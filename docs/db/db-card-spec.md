@@ -11,10 +11,11 @@
 
 ## 테이블 목록
 
-| 테이블명          | 설명          |
-|---------------|-------------|
-| CARD_MASTER   | 카드 기본 정보    |
-| CARD_APPROVAL | 카드 승인/결제 이력 |
+| 테이블명                     | 설명              |
+|--------------------------|-----------------|
+| CARD_MASTER              | 카드 기본 정보        |
+| CARD_APPROVAL            | 카드 승인/결제 이력     |
+| RECONCILIATION_AUDIT_LOG | 정합성 검증 감사 로그    |
 
 ---
 
@@ -93,6 +94,62 @@
 
 ---
 
+## RECONCILIATION_AUDIT_LOG
+
+> 카드 정합성 검증 결과를 감사 로그로 저장합니다.
+> 매일 자정 정합성 검증 스케줄러 실행 시 검증 항목별로 SUCCESS 또는 MISMATCH 결과를 기록합니다.
+
+#### DDL
+
+```sql
+CREATE SEQUENCE SEQ_RECONCILIATION_AUDIT_LOG START WITH 1 INCREMENT BY 1 NOCACHE;
+
+CREATE TABLE RECONCILIATION_AUDIT_LOG (
+    AUDIT_ID     NUMBER(19)     DEFAULT SEQ_RECONCILIATION_AUDIT_LOG.NEXTVAL PRIMARY KEY,
+    AUDIT_TYPE   VARCHAR2(50)   NOT NULL,
+    TARGET_ID    NUMBER(19)     NOT NULL,
+    AUDIT_RESULT VARCHAR2(20)   NOT NULL,
+    MESSAGE      VARCHAR2(1000),
+    CREATED_AT   TIMESTAMP      NOT NULL
+);
+
+CREATE INDEX IDX_RECON_AUDIT_CREATED_AT ON RECONCILIATION_AUDIT_LOG (CREATED_AT);
+CREATE INDEX IDX_RECON_AUDIT_TYPE_RESULT ON RECONCILIATION_AUDIT_LOG (AUDIT_TYPE, AUDIT_RESULT);
+```
+
+#### 컬럼 설명
+
+| 컬럼          | 타입            | 설명                    | Null 허용 |
+|-------------|---------------|-----------------------|---------|
+| AUDIT_ID    | NUMBER(19)    | PK                    | NO      |
+| AUDIT_TYPE  | VARCHAR2(50)  | 검증 유형                 | NO      |
+| TARGET_ID   | NUMBER(19)    | 검증 대상 ID (APPROVAL_ID) | NO      |
+| AUDIT_RESULT| VARCHAR2(20)  | 검증 결과 (SUCCESS / MISMATCH) | NO  |
+| MESSAGE     | VARCHAR2(1000)| 상세 메시지 (불일치 사유 등)    | YES     |
+| CREATED_AT  | TIMESTAMP     | 검증 기록 시각              | NO      |
+
+#### AUDIT_TYPE 값
+
+| 값                | 설명                                              |
+|------------------|-------------------------------------------------|
+| CARD_APPROVAL    | CardApproval ↔ BankTransaction 정합성 검증 (금액 일치, 원장 존재 여부) |
+
+#### AUDIT_RESULT 값
+
+| 값        | 설명          |
+|----------|-------------|
+| SUCCESS  | 정합성 검증 통과   |
+| MISMATCH | 불일치 탐지      |
+
+#### 인덱스
+
+| 이름                           | 컬럼                        | 설명             |
+|------------------------------|---------------------------|----------------|
+| IDX_RECON_AUDIT_CREATED_AT   | CREATED_AT                | 날짜별 감사 로그 조회   |
+| IDX_RECON_AUDIT_TYPE_RESULT  | AUDIT_TYPE, AUDIT_RESULT  | 유형별 결과 집계 조회   |
+
+---
+
 # 주요 관계
 
 | 부모 테이블         | 자식 테이블        | 설명                           |
@@ -113,3 +170,4 @@
 - 카드 상태 기반 사용 제한 관리
 - 금융 감사(Audit) 추적 가능 구조
 - `account_transaction_id`를 통한 카드 승인 ↔ 은행 원장 연결 지원 (nullable)
+- 정합성 검증 결과를 `RECONCILIATION_AUDIT_LOG`에 기록하여 운영 감사 이력 확보

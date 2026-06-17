@@ -18,12 +18,13 @@
 
 ## 테이블 목록
 
-| 테이블명                  | 역할              |
-|-----------------------|-----------------|
-| BANK_ACCOUNT          | 계좌 기본 정보        |
-| BANK_TRANSACTION      | 계좌 거래 내역 원장     |
-| TRANSFER_TRANSACTION  | 이체 내역           |
-| ACCOUNT_BALANCE_HISTORY | 일별 잔액 스냅샷 (미구현) |
+| 테이블명                       | 역할              |
+|----------------------------|-----------------|
+| BANK_ACCOUNT               | 계좌 기본 정보        |
+| BANK_TRANSACTION           | 계좌 거래 내역 원장     |
+| TRANSFER_TRANSACTION       | 이체 내역           |
+| ACCOUNT_BALANCE_HISTORY    | 일별 잔액 스냅샷 (미구현) |
+| RECONCILIATION_AUDIT_LOG   | 정합성 검증 감사 로그    |
 
 ---
 
@@ -297,6 +298,54 @@ ALTER TABLE TRANSFER_TRANSACTION
 
 ---
 
+### RECONCILIATION_AUDIT_LOG
+
+#### 역할
+
+계좌 잔액 및 이체 정합성 검증 결과를 저장하는 감사 로그 테이블입니다.
+
+매일 자정 스케줄러가 실행될 때 생성되며, 검증 유형별로 SUCCESS / MISMATCH 결과를 기록합니다.
+
+#### DDL
+
+```sql
+CREATE TABLE RECONCILIATION_AUDIT_LOG (
+    AUDIT_ID      NUMBER(19)     PRIMARY KEY,
+    AUDIT_TYPE    VARCHAR2(50)   NOT NULL,
+    TARGET_ID     NUMBER(19)     NOT NULL,
+    AUDIT_RESULT  VARCHAR2(20)   NOT NULL,
+    MESSAGE       VARCHAR2(1000),
+    CREATED_AT    TIMESTAMP      NOT NULL
+);
+```
+
+#### 컬럼 설명
+
+| 컬럼          | 타입             | 설명                                        | Null 허용 |
+|-------------|----------------|-------------------------------------------|---------|
+| AUDIT_ID    | NUMBER(19)     | PK                                        | NO      |
+| AUDIT_TYPE  | VARCHAR2(50)   | 검증 유형                                     | NO      |
+| TARGET_ID   | NUMBER(19)     | 검증 대상 엔티티 ID (account_id / transfer_id)   | NO      |
+| AUDIT_RESULT| VARCHAR2(20)   | 검증 결과 (SUCCESS / MISMATCH)                | NO      |
+| MESSAGE     | VARCHAR2(1000) | 상세 메시지 (불일치 사유 등)                         | YES     |
+| CREATED_AT  | TIMESTAMP      | 기록 시각                                     | NO      |
+
+#### AUDIT_TYPE 값
+
+| 값                  | 설명             |
+|--------------------|----------------|
+| ACCOUNT_BALANCE    | 계좌 잔액 정합성 검증   |
+| TRANSFER_INTEGRITY | 이체 원장 정합성 검증   |
+
+#### 인덱스
+
+| 이름                        | 컬럼                   | 설명             |
+|---------------------------|----------------------|----------------|
+| IDX_RECON_AUDIT_CREATED_AT | CREATED_AT           | 날짜별 조회         |
+| IDX_RECON_AUDIT_TYPE_RESULT | AUDIT_TYPE, AUDIT_RESULT | 유형/결과별 집계 조회  |
+
+---
+
 ## 잔액 정합성 규칙
 
 ### 이체 원장 기록 원칙
@@ -321,7 +370,7 @@ ALTER TABLE TRANSFER_TRANSACTION
 
 - `BALANCE_AFTER`는 직전 거래의 `BALANCE_AFTER`를 기준으로 계산
 - `BANK_ACCOUNT.BALANCE`는 입출금 시 실시간 갱신 (`UPDATED_AT` 함께 기록)
-- 불일치 시 `RECONCILIATION_RESULT`에 기록
+- 불일치 시 `RECONCILIATION_AUDIT_LOG`에 기록
 
 ---
 
