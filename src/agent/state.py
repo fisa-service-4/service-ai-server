@@ -12,7 +12,7 @@ class ChatAgentState(TypedDict):
     current_task: str
 
     # 가드
-    guard_passed: bool       # True: 서브그래프 진입 허용 / False: Save_Memory로 단락
+    guard_passed: bool       # True: 서브그래프 진입 허용 / False: 즉시 END
     guard_reason: str        # 정책 차단 사유 (로깅/디버깅용)
 
     # 자산관리
