@@ -116,15 +116,15 @@ Stock_Check / Transfer_Check / Asset_Action
 
 ### 4. 개인화 컨텍스트 사전 로드 + RAG 결합
 
-Initialize 노드가 매 대화 시작 시 Analytics DB에서 **월별 수입/지출 통계, 소비 패턴, 자산 스냅샷**을 로드해 State에 미리 담아둡니다. RAG_Consult 노드는 여기에 pgvector 유사도 검색 결과(개인 분석 텍스트 + 금융 공통 지식)를 결합해 LLM 프롬프트를 구성합니다. 분석 데이터는 파이프라인이 사전 생성하므로 채팅 응답 지연 없이 즉시 활용됩니다.
+Initialize 노드가 매 대화 시작 시 Analytics DB에서 **월별 수입/지출 통계, 소비 패턴, 자산 스냅샷**을 로드해 State에 미리 담아둡니다. RAG_Consult 노드는 pgvector 유사도 검색(LLM 합성 인사이트 + 금융 공통 지식)과 DB 직접 쿼리(AI 추천값)를 병렬로 조회해 LLM 프롬프트를 구성합니다.
+
+- **Vector DB**: 파이프라인이 사전 생성한 LLM 합성 인사이트 2개 (소비 성향 종합 / 개선 포인트) — 시맨틱 검색에 활용
+- **Analytics DB 직접 쿼리**: AI 추천값 (가상월급·투자·비상금 금액) — 정확한 수치 보장
 
 ```
-[Analytics DB] 월별수입/지출, 소비패턴, 자산스냅샷
-        ↓ Initialize 노드 (대화 시작 시 로드)
-  ChatAgentState.analysis_data
-        +
-[Vector DB] 유사도 검색 (BGE-M3 임베딩)
-        ↓ RAG_Consult 노드
+[Vector DB] 유사도 검색 — LLM 합성 인사이트 + 금융 공통 지식
+[Analytics DB] 직접 쿼리 — AI 추천값 (SALARY/INVESTMENT/EMERGENCY)
+        ↓ RAG_Consult 노드 (병렬 조회)
     LLM 프롬프트 (개인화 컨텍스트 포함)
 ```
 
@@ -311,8 +311,11 @@ pending_action  consult        기타
     → analysis_consumption_pattern, ai_briefing_history, ai_recommendation 저장
 
 [Step 3] embedding
-분석 결과 텍스트
-    → BGE-M3 임베딩 (로컬)
+Step 2 분석 결과 (소비 패턴 + 브리핑 + 추천)
+    → LLM 인사이트 합성
+        - INSIGHT_PATTERN: 소비 성향 및 재무 상태 종합 해석
+        - INSIGHT_ACTION: 현재 집중해야 할 재무 개선 포인트
+    → BGE-M3 임베딩 (text → vector)
     → analysis_ai_vector_metadata 저장 (pgvector)
     → 3개월 이상 된 데이터 자동 삭제
 ```

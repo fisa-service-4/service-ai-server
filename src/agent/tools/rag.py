@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -18,7 +19,7 @@ import os
 
 from google import genai
 
-from src.pipeline.db import get_vector_pool
+from src.pipeline.db import get_analytics_pool, get_vector_pool
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,41 @@ def _embed_query(text: str) -> list[float]:
         config={"output_dimensionality": 1024},
     )
     return result.embeddings[0].values
+
+
+async def get_latest_recommendations(user_id: str) -> str:
+    try:
+        uid = int(user_id)
+    except (ValueError, TypeError):
+        return ""
+
+    pool = await get_analytics_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT recommendation_type, recommendation_content
+            FROM analysis_ai_recommendation
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT 4
+            """,
+            uid,
+        )
+
+    if not rows:
+        return ""
+
+    lines = []
+    for r in rows:
+        content = json.loads(r["recommendation_content"])
+        summary = content.get("summary", "")
+        value = content.get("value")
+        line = f"- [{r['recommendation_type']}] {summary}"
+        if value:
+            line += f" (추천값: {value}원)"
+        lines.append(line)
+
+    return "\n".join(lines)
 
 
 async def search_rag_context(user_id: str, query: str, top_k: int = 5) -> str:

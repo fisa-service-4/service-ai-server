@@ -2,7 +2,7 @@ import asyncio
 
 from src.agent.state import ChatAgentState
 from src.agent.llm import client, MODEL
-from src.agent.tools.rag import search_rag_context
+from src.agent.tools.rag import get_latest_recommendations, search_rag_context
 from src.agent.tools.asset import get_virtual_salary_setting
 from src.agent.nodes.log_utils import log_node, _insert_prompt_log, run_in_background
 
@@ -31,6 +31,15 @@ async def _safe_virtual_salary(token: str | None) -> dict:
         return {}
 
 
+async def _safe_recommendations(user_id: str) -> str:
+    if not user_id:
+        return ""
+    try:
+        return await get_latest_recommendations(user_id)
+    except Exception:
+        return ""
+
+
 @log_node("RAG_Consult")
 async def rag_consult_node(state: ChatAgentState) -> dict:
     token = state.get("token")
@@ -41,9 +50,10 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
             user_query = msg["content"]
             break
 
-    rag_context, virtual_salary = await asyncio.gather(
+    rag_context, virtual_salary, recommendations = await asyncio.gather(
         _safe_rag(state["user_id"], user_query),
         _safe_virtual_salary(token),
+        _safe_recommendations(state["user_id"]),
     )
 
     system_content = _SYSTEM_PROMPT
@@ -54,6 +64,9 @@ async def rag_consult_node(state: ChatAgentState) -> dict:
         system_content += f"\n\n[참고 자료]\n{context_text}"
     elif state.get("analysis_data"):
         system_content += f"\n\n[사용자 분석 데이터]\n{state['analysis_data']}"
+
+    if recommendations:
+        system_content += f"\n\n[AI 추천]\n{recommendations}"
 
     if virtual_salary:
         system_content += f"\n\n[가상월급 설정]\n{virtual_salary}"
