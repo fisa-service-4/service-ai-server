@@ -8,17 +8,15 @@
 
 ## 테이블 목록
 
-| 테이블명                           | 설명           |
-|--------------------------------|--------------|
-| ANALYSIS_RAW_TRANSACTION       | 원천 거래 데이터    |
-| ANALYSIS_MONTHLY_INCOME        | 월 수입 분석      |
-| ANALYSIS_MONTHLY_EXPENSE       | 월 지출 분석      |
-| ANALYSIS_CONSUMPTION_PATTERN   | 소비 패턴 분석     |
-| ANALYSIS_ASSET_SNAPSHOT        | 자산 스냅샷       |
-| ANALYSIS_AI_RECOMMENDATION     | AI 추천 이력     |
-| ANALYSIS_AI_VECTOR_METADATA    | RAG 벡터 메타데이터 |
-| ANALYSIS_AI_BRIEFING_HISTORY   | AI 브리핑 이력    |
-| ANALYSIS_USER_BEHAVIOR_PATTERN | 사용자 행동 패턴    |
+| 테이블명                         | 설명           |
+|------------------------------|--------------|
+| ANALYSIS_RAW_TRANSACTION     | 원천 거래 데이터    |
+| ANALYSIS_MONTHLY_INCOME      | 월 수입 분석      |
+| ANALYSIS_MONTHLY_EXPENSE     | 월 지출 분석      |
+| ANALYSIS_CONSUMPTION_PATTERN | 소비 패턴 분석     |
+| ANALYSIS_ASSET_SNAPSHOT      | 자산 스냅샷       |
+| ANALYSIS_AI_RECOMMENDATION   | AI 추천 이력     |
+| ANALYSIS_AI_BRIEFING_HISTORY | AI 브리핑 이력    |
 
 ---
 
@@ -138,18 +136,19 @@
 
 ## ANALYSIS_AI_VECTOR_METADATA
 
-> 벡터 검색 및 LangGraph Memory 저장용
+> 벡터 검색 및 LangGraph Memory 저장용 (Vector DB)
 
-| 컬럼명                | 데이터 타입       | 설명        | Null 허용 | PK / FK |
-|--------------------|--------------|-----------|---------|---------|
-| vector_metadata_id | BIGINT       | 메타 ID     | NO      | PK      |
-| user_id            | BIGINT       | 사용자 ID    | NO      | FK      |
-| vector_type        | VARCHAR(50)  | 벡터 유형     | NO      | -       |
-| reference_id       | BIGINT       | 원본 데이터 ID | YES     | -       |
-| embedding_version  | VARCHAR(50)  | 임베딩 버전    | YES     | -       |
-| chunk_text         | TEXT         | 벡터 원문     | YES     | -       |
-| vector_key         | VARCHAR(255) | 벡터 저장 키   | YES     | -       |
-| indexed_at         | TIMESTAMP    | 인덱싱 시각    | NO      | -       |
+| 컬럼명               | 데이터 타입        | 설명          | Null 허용 | PK / FK |
+|--------------------|---------------|-------------|---------|---------|
+| id                 | BIGSERIAL     | 메타 ID       | NO      | PK      |
+| user_id            | BIGINT        | 사용자 ID      | NO      | -       |
+| vector_type        | VARCHAR(50)   | 벡터 유형       | NO      | -       |
+| reference_id       | BIGINT        | 원본 데이터 ID   | YES     | -       |
+| embedding_version  | VARCHAR(50)   | 임베딩 버전      | YES     | -       |
+| chunk_text         | TEXT          | 벡터 원문       | YES     | -       |
+| vector_key         | VARCHAR(255)  | 벡터 저장 키 (UNIQUE) | YES | -       |
+| embedding          | vector(1024)  | pgvector 임베딩 | YES    | -       |
+| indexed_at         | TIMESTAMP     | 인덱싱 시각      | NO      | -       |
 
 ---
 
@@ -166,16 +165,3 @@
 | generated_model     | VARCHAR(100)                     | 생성 모델     | YES     | -       |
 | created_at          | TIMESTAMP                        | 생성 시각     | NO      | -       |
 
----
-
-## ANALYSIS_USER_BEHAVIOR_PATTERN
-
-> AI 행동 패턴 분석
-
-| 컬럼명                 | 데이터 타입       | 설명           | Null 허용 | PK / FK |
-|---------------------|--------------|--------------|---------|---------|
-| behavior_pattern_id | BIGINT       | 패턴 ID        | NO      | PK      |
-| user_id             | BIGINT       | 사용자 ID       | NO      | FK      |
-| login_frequency     | DECIMAL(5,2) | 로그인 빈도       | YES     | -       |
-| avg_session_time    | BIGINT       | 평균 사용 시간 (초) | YES     | -       |
-| analyzed_at         | TIMESTAMP    | 분석 시각        | NO      | -       |

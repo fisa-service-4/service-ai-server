@@ -5,9 +5,15 @@
 class ChatAgentState(TypedDict):
     # 공통
     user_id: str
+    token: str               # JWT Bearer 토큰
+    session_id: int          # 채팅 세션 ID
     messages: list
     intent: str              # ASSET / STOCK / TRANSFER / UNKNOWN
     current_task: str
+
+    # 가드
+    guard_passed: bool       # 정책 통과 여부
+    guard_reason: str        # 차단 사유
 
     # 자산관리
     rag_context: str         # Vector DB 검색 결과
@@ -17,8 +23,10 @@ class ChatAgentState(TypedDict):
     want_apply: bool
     apply_confirmed: bool
     apply_pin_verified: bool
+    asset_action_type: str   # 자산 액션 유형
 
     # 증권
+    account_id: int          # 증권 계좌 ID
     stock_info: dict         # {code, name, quantity, price, order_type}
     pending_action: dict
     info_complete: bool
@@ -32,7 +40,8 @@ class ChatAgentState(TypedDict):
 
     # 이체
     from_account_id: str
-    to_account_id: str
+    to_bank_code: str        # 입금 은행 코드
+    to_account_number: str   # 입금 계좌번호
     amount: int
     description: str
     transfer_info_complete: bool
@@ -47,14 +56,10 @@ class ChatAgentState(TypedDict):
 | --- | --- | --- |
 | 공통 | Initialize | user_profile + analysis_data 로드 |
 | 공통 | Router | ASSET / STOCK / TRANSFER 의도 분류 |
-| 자산 | RAG_Consult | 분석 리포트 + Vector 검색 → 금융 상담 |
-| 자산 | Asset_Action | 분배 추천 pending_action 생성 |
-| 증권 | Stock_Extract | 종목/수량 추출 + 정보 부족 시 질문 |
-| 증권 | Stock_Check | 잔액/시세 조회 → 주문 가능 여부 확인 |
-| 이체 | Transfer_Extract | 계좌/금액/메모 추출 |
-| 이체 | Transfer_Check | 잔액/한도 조회 |
-| 보안 | Verifier | Interrupt → PIN 입력 대기 |
-| 실행 | Executor | 백엔드 API 호출 (이체/주문/설정변경) |
+| 공통 | Guard | 정책 기반 요청 차단 (guard_passed 설정) |
+| 자산 | Asset_Flow | 자산 상담 서브그래프 (RAG_Consult → Asset_Action → Verifier → Executor) |
+| 증권 | Stock_Flow | 증권 서브그래프 (Stock_Extract → Stock_Check → Verifier → Executor) |
+| 이체 | Transfer_Flow | 이체 서브그래프 (Transfer_Extract → Transfer_Check → Verifier → Executor) |
 | 저장 | Save_Memory | 대화 저장 + Vector DB 업데이트 |
 
 ---
@@ -62,64 +67,58 @@ class ChatAgentState(TypedDict):
 ## Edge
 ```python
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
+
+from src.agent.state import ChatAgentState
+from src.agent.nodes.initialize import initialize_node
+from src.agent.nodes.router import router_node
+from src.agent.nodes.guard import guard_node
+from src.agent.nodes.save_memory import save_memory_node
+from src.agent.subgraphs import asset_graph, stock_graph, transfer_graph
+
+
+def _route_after_guard(state: ChatAgentState) -> str:
+    if not state.get("guard_passed", True):
+        return "Save_Memory"
+    return {
+        "ASSET":    "Asset_Flow",
+        "UNKNOWN":  "Asset_Flow",
+        "STOCK":    "Stock_Flow",
+        "TRANSFER": "Transfer_Flow",
+    }.get(state.get("intent", "UNKNOWN"), "Save_Memory")
+
 
 graph = StateGraph(ChatAgentState)
 
+graph.add_node("Initialize", initialize_node)
+graph.add_node("Router", router_node)
+graph.add_node("Guard", guard_node)
+graph.add_node("Asset_Flow", asset_graph)
+graph.add_node("Stock_Flow", stock_graph)
+graph.add_node("Transfer_Flow", transfer_graph)
+graph.add_node("Save_Memory", save_memory_node)
+
 graph.set_entry_point("Initialize")
 graph.add_edge("Initialize", "Router")
+graph.add_edge("Router", "Guard")
 
-# 라우터 분기
+# Guard 분기: guard_passed=False → Save_Memory, 나머지 → 도메인 서브그래프
+# UNKNOWN intent는 Asset_Flow로 라우팅
 graph.add_conditional_edges(
-    "Router",
-    lambda x: x["intent"],
+    "Guard",
+    _route_after_guard,
     {
-        "ASSET":    "RAG_Consult",
-        "STOCK":    "Stock_Extract",
-        "TRANSFER": "Transfer_Extract",
-        "UNKNOWN":  "Save_Memory"
-    }
+        "Asset_Flow":    "Asset_Flow",
+        "Stock_Flow":    "Stock_Flow",
+        "Transfer_Flow": "Transfer_Flow",
+        "Save_Memory":   "Save_Memory",
+    },
 )
 
-# 자산관리
-graph.add_edge("RAG_Consult", "Asset_Action")
-graph.add_conditional_edges(
-    "Asset_Action",
-    lambda x: "action" if x.get("pending_action") else "done",
-    {"action": "Verifier", "done": "Save_Memory"}
-)
-
-# 증권
-graph.add_edge("Stock_Extract", "Stock_Check")
-graph.add_conditional_edges(
-    "Stock_Check",
-    lambda x: "ready" if x.get("info_complete") else "more",
-    {"ready": "Verifier", "more": "Stock_Extract"}
-)
-
-# 이체
-graph.add_edge("Transfer_Extract", "Transfer_Check")
-graph.add_conditional_edges(
-    "Transfer_Check",
-    lambda x: "ready" if x.get("transfer_info_complete") else "more",
-    {"ready": "Verifier", "more": "Transfer_Extract"}
-)
-
-# 보안 게이트
-graph.add_conditional_edges(
-    "Verifier",
-    lambda x: "ok" if (
-        x.get("stock_pin_verified") or
-        x.get("transfer_pin_verified") or
-        x.get("apply_pin_verified")
-    ) else "fail",
-    {"ok": "Executor", "fail": "Save_Memory"}
-)
-
-graph.add_edge("Executor", "Save_Memory")
+graph.add_edge("Asset_Flow", "Save_Memory")
+graph.add_edge("Stock_Flow", "Save_Memory")
+graph.add_edge("Transfer_Flow", "Save_Memory")
 graph.add_edge("Save_Memory", END)
 
-app = graph.compile(
-    checkpointer=memory,
-    interrupt_before=["Verifier"]  # PIN 입력 전 대기
-)
+chat_graph = graph.compile(checkpointer=MemorySaver())
 ```

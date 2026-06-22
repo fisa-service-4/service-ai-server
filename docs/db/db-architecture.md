@@ -62,17 +62,15 @@
 @db-analytics-spec.md
 통계 및 AI 분석용 데이터를 저장합니다.
 
-| 테이블명                           | 설명           |
-|--------------------------------|--------------|
-| ANALYSIS_RAW_TRANSACTION       | 원천 거래 데이터    |
-| ANALYSIS_MONTHLY_INCOME        | 월 수입 분석      |
-| ANALYSIS_MONTHLY_EXPENSE       | 월 지출 분석      |
-| ANALYSIS_CONSUMPTION_PATTERN   | 소비 패턴 분석     |
-| ANALYSIS_ASSET_SNAPSHOT        | 자산 스냅샷       |
-| ANALYSIS_AI_RECOMMENDATION     | AI 추천 이력     |
-| ANALYSIS_AI_VECTOR_METADATA    | RAG 벡터 메타데이터 |
-| ANALYSIS_AI_BRIEFING_HISTORY   | AI 브리핑 이력    |
-| ANALYSIS_USER_BEHAVIOR_PATTERN | 사용자 행동 패턴    |
+| 테이블명                         | 설명         |
+|------------------------------|------------|
+| ANALYSIS_RAW_TRANSACTION     | 원천 거래 데이터  |
+| ANALYSIS_MONTHLY_INCOME      | 월 수입 분석    |
+| ANALYSIS_MONTHLY_EXPENSE     | 월 지출 분석    |
+| ANALYSIS_CONSUMPTION_PATTERN | 소비 패턴 분석   |
+| ANALYSIS_ASSET_SNAPSHOT      | 자산 스냅샷     |
+| ANALYSIS_AI_RECOMMENDATION   | AI 추천 이력   |
+| ANALYSIS_AI_BRIEFING_HISTORY | AI 브리핑 이력  |
 
 ---
 
@@ -101,12 +99,10 @@
 
 AI 검색 증강 생성(RAG)용 벡터 데이터를 저장합니다.
 
-## 주요 데이터
-
-- 임베딩 벡터
-- 금융 상담 문서
-- FAQ
-- 추천 데이터
+| 테이블명                        | 설명                   |
+|-----------------------------|----------------------|
+| ANALYSIS_AI_VECTOR_METADATA | 사용자 개인 분석 데이터 임베딩    |
+| COMMON_KNOWLEDGE            | 공통 금융 지식 임베딩 (전역 공유) |
 
 ---
 

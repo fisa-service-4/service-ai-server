@@ -10,8 +10,39 @@
 | ANALYSIS_CONSUMPTION_PATTERN | LLM | 소비 성향 분석 |
 | ANALYSIS_AI_BRIEFING_HISTORY | LLM | 브리핑 이력 |
 | ANALYSIS_AI_RECOMMENDATION | LLM | AI 추천 (적용 시 applied_yn 업데이트) |
-| ANALYSIS_USER_BEHAVIOR_PATTERN | LLM | 행동 패턴 (우선순위 낮음) |
-| ANALYSIS_AI_VECTOR_METADATA | 임베딩 | Vector DB 메타데이터 |
+
+---
+
+## Vector DB 테이블
+
+| 테이블 | 설명 |
+| --- | --- |
+| ANALYSIS_AI_VECTOR_METADATA | 사용자 개인 분석 데이터 임베딩 |
+| COMMON_KNOWLEDGE | 공통 금융 지식 임베딩 |
+
+### ANALYSIS_AI_VECTOR_METADATA
+| 컬럼 | 타입 | 설명 |
+| --- | --- | --- |
+| id | BIGSERIAL | PK |
+| user_id | BIGINT | 사용자 ID |
+| vector_type | VARCHAR(50) | 벡터 유형 |
+| reference_id | BIGINT | 원본 데이터 ID |
+| embedding_version | VARCHAR(50) | 임베딩 버전 |
+| chunk_text | TEXT | 벡터 원문 |
+| vector_key | VARCHAR(255) | 벡터 저장 키 (UNIQUE) |
+| embedding | vector(1024) | pgvector 임베딩 |
+| indexed_at | TIMESTAMP | 인덱싱 시각 |
+
+### COMMON_KNOWLEDGE
+| 컬럼 | 타입 | 설명 |
+| --- | --- | --- |
+| id | BIGSERIAL | PK |
+| category | VARCHAR(100) | 지식 카테고리 |
+| title | VARCHAR(255) | 제목 |
+| chunk_text | TEXT | 내용 |
+| embedding | vector(1024) | pgvector 임베딩 |
+| embedding_version | VARCHAR(50) | 임베딩 버전 |
+| created_at | TIMESTAMP | 생성 시각 |
 
 ---
 

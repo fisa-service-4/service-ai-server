@@ -17,98 +17,34 @@
 
 ---
 
-## 1-1. 채팅 세션 생성
+## 1-1. 메시지 전송
 
-**POST** `/chat/sessions` | Bearer Token 필요
-
-**Request Body**
-
-```json
-{
-  "title": "자산 상담"
-}
-```
-
-| 필드  | 타입   | 필수 | 설명      |
-| ----- | ------ | ---- | --------- |
-| title | String | X    | 세션 제목 |
-
-**Response** `201 Created`
-
-```json
-{
-  "success": true,
-  "data": {
-    "sessionId": 1,
-    "status": "ACTIVE"
-  },
-  "meta": { "traceId": "uuid" }
-}
-```
-
----
-
-## 1-2. 채팅 세션 목록 조회
-
-**GET** `/chat/sessions` | Bearer Token 필요
-
-**Query Parameters**
-
-| 이름 | 타입    | 필수 | 설명                 |
-| ---- | ------- | ---- | -------------------- |
-| page | Integer | X    | 페이지 (default: 0)  |
-| size | Integer | X    | 사이즈 (default: 20) |
-
-**Response** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": {
-    "content": [
-      {
-        "sessionId": 1,
-        "title": "자산 상담",
-        "status": "ACTIVE",
-        "createdAt": "2026-05-17T12:00:00"
-      }
-    ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 5,
-    "totalPages": 1
-  },
-  "meta": { "traceId": "uuid" }
-}
-```
-
----
-
-## 1-3. 메시지 전송
-
-**POST** `/chat/messages` | Bearer Token 필요
+**POST** `/chat/run` | Bearer Token 필요
 
 **Request Body**
 
 ```json
 {
   "sessionId": 1,
-  "message": "이번달 소비 분석해줘"
+  "message": "이번달 소비 분석해줘",
+  "isPin": false,
+  "accountId": null
 }
 ```
 
-| 필드      | 타입   | 필수 | 설명          |
-| --------- | ------ | ---- | ------------- |
-| sessionId | Long   | O    | 채팅 세션 ID  |
-| message   | String | O    | 사용자 메시지 |
+| 필드      | 타입    | 필수 | 설명                                   |
+| --------- | ------- | ---- | -------------------------------------- |
+| sessionId | Long    | O    | 채팅 세션 ID                           |
+| message   | String  | O    | 사용자 메시지 (PIN 입력 시 PIN 값)     |
+| isPin     | Boolean | X    | PIN 입력 여부 (default: false)         |
+| accountId | Integer | X    | 증권 계좌 ID (증권 주문 시 필요)       |
 
-**Response** `200 OK`
+**Response** `200 OK` — 일반 응답
 
 ```json
 {
   "success": true,
   "data": {
-    "messageId": 1001,
     "role": "AI",
     "intent": "ASSET",
     "content": "이번달 식비 소비가 증가했습니다.",
@@ -118,73 +54,33 @@
 }
 ```
 
+**Response** `200 OK` — PIN 요청 (금융 액션 전 인증 필요 시)
+
+```json
+{
+  "success": true,
+  "data": {
+    "role": "AI",
+    "intent": "STOCK",
+    "content": "PIN을 입력해 주세요.",
+    "actionRequired": true,
+    "requirePin": true
+  },
+  "meta": { "traceId": "uuid" }
+}
+```
+
+| 필드          | 타입    | 설명                                   |
+| ------------- | ------- | -------------------------------------- |
+| role          | String  | AI 고정                                |
+| intent        | String  | ASSET / STOCK / TRANSFER / UNKNOWN     |
+| content       | String  | AI 응답 메시지                         |
+| actionRequired| Boolean | 금융 액션 실행 대기 여부               |
+| requirePin    | Boolean | PIN 입력 필요 여부 (PIN 요청 시에만 포함) |
+
 | 상황         | 코드   | 메시지                      |
 | ------------ | ------ | --------------------------- |
 | AI 응답 실패 | AI_001 | AI 응답 생성에 실패했습니다 |
-
----
-
-## 1-4. 채팅 메시지 목록 조회
-
-**GET** `/chat/sessions/{sessionId}/messages` | Bearer Token 필요
-
-**Path Parameters**
-
-| 이름      | 타입 | 필수 | 설명         |
-| --------- | ---- | ---- | ------------ |
-| sessionId | Long | O    | 채팅 세션 ID |
-
-**Response** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": {
-    "content": [
-      {
-        "messageId": 1001,
-        "role": "USER",
-        "content": "이번달 소비 분석해줘",
-        "createdAt": "2026-05-17T12:00:00"
-      },
-      {
-        "messageId": 1002,
-        "role": "AI",
-        "intent": "ASSET",
-        "content": "이번달 식비 소비가 증가했습니다.",
-        "actionRequired": false,
-        "createdAt": "2026-05-17T12:00:01"
-      }
-    ],
-    "page": 0,
-    "size": 20,
-    "totalElements": 2,
-    "totalPages": 1
-  },
-  "meta": { "traceId": "uuid" }
-}
-```
-
----
-
-## 1-5. 채팅 세션 종료
-
-**DELETE** `/chat/sessions/{sessionId}` | Bearer Token 필요
-
-**Request Body** 없음
-
-**Response** `200 OK`
-
-```json
-{
-  "success": true,
-  "data": {
-    "sessionId": 1,
-    "status": "CLOSED"
-  },
-  "meta": { "traceId": "uuid" }
-}
-```
 
 ---
 
