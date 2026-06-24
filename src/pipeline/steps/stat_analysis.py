@@ -50,11 +50,11 @@ async def run(user_id: int):
         category = row["category"] or ""
         amount = float(row["amount"])
 
-        if row["transaction_type"] == "INCOME":
+        if row["transaction_type"] == "DEPOSIT":
             col = INCOME_COLUMN_MAP.get(category, "etc_income")
             income_by_month[ym][col] += amount
 
-        elif row["transaction_type"] == "EXPENSE":
+        elif row["transaction_type"] == "WITHDRAW":
             col = EXPENSE_COLUMN_MAP.get(category, "etc_expense")
             expense_by_month[ym][col] += amount
 
